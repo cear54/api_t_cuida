@@ -1,0 +1,61 @@
+# Archivo .htaccess para la API en producción
+
+# Habilitar rewrite engine
+RewriteEngine On
+
+# Redirigir todo al index.php (excepto archivos existentes)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+
+# Headers de seguridad
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options DENY
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+# CORS para producción (ajustar según tu dominio)
+Header always set Access-Control-Allow-Origin "https://tudominio.com"
+Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+
+# Evitar acceso directo a archivos sensibles
+<Files "*.php">
+    Order Deny,Allow
+    Deny from all
+</Files>
+
+<Files "index.php">
+    Order Allow,Deny
+    Allow from all
+</Files>
+
+<Files "login.php">
+    Order Allow,Deny
+    Allow from all
+</Files>
+
+<Files "nino.php">
+    Order Allow,Deny
+    Allow from all
+</Files>
+
+<Files "verify-token.php">
+    Order Allow,Deny
+    Allow from all
+</Files>
+
+# Proteger archivos de configuración
+<Files "database.php">
+    Order Deny,Allow
+    Deny from all
+</Files>
+
+<Files ".env">
+    Order Deny,Allow
+    Deny from all
+</Files>
+
+# Logs de errores
+php_flag log_errors On
+php_value error_log /path/to/error.log

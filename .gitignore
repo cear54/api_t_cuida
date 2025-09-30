@@ -1,0 +1,86 @@
+# Variables de entorno
+.env
+
+# Archivos temporales de PHP
+*.tmp
+*.log
+
+# Archivos de configuración específicos
+config/local.php
+
+# Archivos de respaldo
+*.bak
+*.backup
+
+# Directorios de dependencias (si se usan en el futuro)
+vendor/
+node_modules/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos PHP vacíos problemáticos (VS Code los recrea automáticamente)
+agregar_columnas_salida.php
+agregar_columna_persona_entrega.php
+check_ninos.php
+corregir_constraint.php
+corregir_constraints_personal.php
+corregir_fk_educadora.php
+crear_tabla_asistencias.php
+crear_tabla_bitacoras.php
+crear_tabla_salidas.php
+diagnostico_integracion_completa.php
+migrar_campos_asistencia.php
+probar_endpoint_asistencia.php
+test_upload_path.php
+verificar_asistencias.php
+verificar_constraints.php
+verificar_datos_existentes.php
+verificar_empresa.php
+verificar_empresas.php
+verificar_estructura.php
+verificar_estructuras.php
+verificar_estructura_tablas.php
+verificar_salidas.php
+verificar_tablas.php
+verificar_token.php
+verificar_usuarios_personal.php
+verificar_usuario_token.php
+
+# Archivos de debug y scripts temporales del proyecto tareas
+debug_*.php
+test_*.php
+fix_*.php
+recrear_*.php
+check_*.php
+crear_*.php
+revert_*.php
+
+# Archivos PowerShell
+*.ps1
+
+# Archivos Markdown de documentación temporal
+ACTUALIZACION_*.md
+API_*.md
+ENV_*.md
+LIMPIEZA_*.md
+NOTIFICACIONES_*.md
+POSTMAN_*.md
+SOLUCION_*.md
+TAREAS_*.md
+
+# Script de limpieza
+limpiar_archivos_vacios.ps1
+Thumbs.db
+
+# Archivos de IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos de prueba temporal
+test_*
+debug_*
+crear_usuario_prueba.php

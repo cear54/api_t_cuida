@@ -1,0 +1,36 @@
+{
+	"folders": [
+		{
+			"name": "Flutter App",
+			"path": "../../../../Users/CEAR/Documents/apps_flutter/fronts/t_cuida"
+		},
+		{
+			"name": "PHP API",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/agregar_*.php": true,
+			"**/crear_tabla_*.php": true,
+			"**/verificar_*.php": true,
+			"**/corregir_*.php": true,
+			"**/diagnostico_*.php": true,
+			"**/migrar_*.php": true,
+			"**/probar_*.php": true,
+			"**/test_*.php": true,
+			"**/check_*.php": true
+		},
+		"files.watcherExclude": {
+			"**/agregar_*.php": true,
+			"**/crear_tabla_*.php": true,
+			"**/verificar_*.php": true,
+			"**/corregir_*.php": true,
+			"**/diagnostico_*.php": true,
+			"**/migrar_*.php": true,
+			"**/probar_*.php": true,
+			"**/test_*.php": true,
+			"**/check_*.php": true
+		}
+	}
+}
