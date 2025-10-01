@@ -49,9 +49,6 @@ try {
         exit();
     }
     
-    // Debug: Mostrar contenido completo del token decodificado
-    error_log("DEBUG TAREAS - Token decodificado: " . json_encode($decoded));
-    
     // Obtener datos del usuario desde el token
     $usuario = [
         'id' => $decoded['user_id'] ?? $decoded['personal_id'] ?? $decoded['id'] ?? null,
@@ -60,11 +57,7 @@ try {
         'email' => $decoded['email'] ?? null
     ];
     
-    // Debug: Mostrar datos extraídos del usuario
-    error_log("DEBUG TAREAS - Usuario extraído: " . json_encode($usuario));
-    
     if (!$usuario['id'] || !$usuario['empresa_id']) {
-        error_log("DEBUG TAREAS - Datos faltantes - ID: " . ($usuario['id'] ?? 'NULL') . ", Empresa: " . ($usuario['empresa_id'] ?? 'NULL'));
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Datos de usuario incompletos en el token']);
         exit();

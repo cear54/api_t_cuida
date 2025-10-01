@@ -13,9 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 
-// Configurar zona horaria
-date_default_timezone_set('America/Mexico_City');
-
 try {
     // Crear conexión a la base de datos
     $database = new Database();
@@ -32,10 +29,6 @@ try {
             ]);
             exit();
         }
-        
-        // Log para debug
-        error_log("🗓️ DEBUG Eventos - Obteniendo eventos para empresa: $empresa_id");
-        error_log("🗓️ DEBUG Eventos - Filtro: eventos desde ayer hasta el futuro");
         
         // Preparar consulta SQL con filtro de fecha (desde ayer)
         $sql = "SELECT 
@@ -63,9 +56,6 @@ try {
         $stmt->execute();
         
         $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Log del resultado
-        error_log("🗓️ DEBUG Eventos - Eventos encontrados: " . count($eventos));
         
         // Procesar eventos para asegurar formato correcto
         $eventos_procesados = [];
