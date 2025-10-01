@@ -124,13 +124,26 @@ function obtenerTareas($db, $usuario) {
             $email = $usuario['email'];
             array_push($params, $empresa_id, $email, $email, $email, $email);
         } else if ($rol === 'academico') {
-            // Los educadores ven tareas de sus salones
+            // Los educadores ven solo tareas de su salón asignado
+            // Obtener personal_id del usuario académico
+            $stmt = $db->prepare("SELECT personal_id FROM usuarios_app WHERE id = ? AND empresa_id = ?");
+            $stmt->execute([$usuario_id, $empresa_id]);
+            $usuario_data = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$usuario_data || !$usuario_data['personal_id']) {
+                throw new Exception('Usuario académico sin personal_id asignado');
+            }
+            
+            // Filtrar tareas por salón asignado al personal
             $whereConditions[] = "EXISTS (
-                SELECT 1 FROM salones s 
-                WHERE s.id = t.salon_id 
-                AND s.empresa_id = ?
+                SELECT 1 FROM personal p 
+                WHERE p.salon_id = t.salon_id 
+                AND p.id = ?
+                AND p.empresa_id = ?
+                AND p.activo = 1
             )";
-            $params[] = $empresa_id;
+            
+            array_push($params, $usuario_data['personal_id'], $empresa_id);
         }
         
         // Filtros adicionales por parámetros GET
