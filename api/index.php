@@ -33,6 +33,14 @@ switch ($path) {
         include_once 'nino.php';
         break;
     
+    case '/salones':
+        include_once 'salones.php';
+        break;
+    
+    case '/personal_salon':
+        include_once 'personal_salon.php';
+        break;
+    
     case '/':
     case '':
         http_response_code(200);
@@ -41,7 +49,9 @@ switch ($path) {
             "endpoints" => array(
                 "POST /login" => "Autenticación de usuarios (retorna JWT)",
                 "GET /verify-token" => "Verificar validez del token JWT",
-                "GET /nino" => "Obtener información de un niño (requiere autenticación)"
+                "GET /nino" => "Obtener información de un niño (requiere autenticación)",
+                "GET /salones" => "Obtener lista de salones/grupos (requiere autenticación)",
+                "GET /personal_salon?salon_id={id}" => "Obtener personal asignado a un salón (requiere autenticación)"
             ),
             "authentication" => "JWT Bearer Token required for protected endpoints"
         ));

@@ -46,7 +46,7 @@ if($nino_id == '0') {
 }
 
 // Validar que el usuario tenga acceso a este niño
-if($user_data['nino_id'] != $nino_id && $user_data['tipo_usuario'] != 'admin') {
+if($user_data['nino_id'] != $nino_id && $user_data['tipo_usuario'] != 'administrador') {
     http_response_code(403);
     echo json_encode(array(
         "success" => false,

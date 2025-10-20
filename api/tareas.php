@@ -262,7 +262,7 @@ function obtenerTareas($db, $usuario) {
 function crearTarea($db, $usuario) {
     try {
         // Solo educadores y admins pueden crear tareas
-        if (!in_array($usuario['rol'], ['academico', 'admin'])) {
+        if (!in_array($usuario['rol'], ['academico', 'administrador'])) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'No tiene permisos para crear tareas']);
             return;
@@ -361,7 +361,7 @@ function actualizarTarea($db, $usuario) {
         }
         
         // Solo el creador, admins o educadores pueden actualizar
-        if (!in_array($usuario['rol'], ['admin']) && 
+        if (!in_array($usuario['rol'], ['administrador']) && 
             $usuario['rol'] !== 'academico' && 
             $tarea['usuario_creador_id'] != $usuario['id']) {
             http_response_code(403);
@@ -437,7 +437,7 @@ function eliminarTarea($db, $usuario) {
         }
         
         // Solo el creador o admins pueden eliminar
-        if ($usuario['rol'] !== 'admin' && $tarea['usuario_creador_id'] != $usuario['id']) {
+        if ($usuario['rol'] !== 'administrador' && $tarea['usuario_creador_id'] != $usuario['id']) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'No tiene permisos para eliminar esta tarea']);
             return;
