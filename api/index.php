@@ -41,6 +41,10 @@ switch ($path) {
         include_once 'personal_salon.php';
         break;
     
+    case '/ninos':
+        include_once 'ninos.php';
+        break;
+    
     case '/':
     case '':
         http_response_code(200);
@@ -50,6 +54,7 @@ switch ($path) {
                 "POST /login" => "Autenticación de usuarios (retorna JWT)",
                 "GET /verify-token" => "Verificar validez del token JWT",
                 "GET /nino" => "Obtener información de un niño (requiere autenticación)",
+                "GET /ninos" => "Obtener lista de todos los niños de la empresa (requiere autenticación)",
                 "GET /salones" => "Obtener lista de salones/grupos (requiere autenticación)",
                 "GET /personal_salon?salon_id={id}" => "Obtener personal asignado a un salón (requiere autenticación)"
             ),
