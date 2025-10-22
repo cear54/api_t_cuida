@@ -75,12 +75,21 @@ try {
             $recipients[] = $token;
         }
     } elseif (isset($data->tipo_usuario)) {
-        // Enviar a todos los usuarios de un tipo
-        $query = "SELECT token_app FROM usuarios_app WHERE tipo_usuario = :tipo_usuario AND token_app IS NOT NULL AND activo = 1";
-        $stmt = $db->prepare($query);
-        $stmt->bindParam(":tipo_usuario", $data->tipo_usuario);
-        $stmt->execute();
-        $recipients = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        // Enviar según tipo de usuario
+        if ($data->tipo_usuario === 'educador') {
+            // EDUCADOR = todos los usuarios MENOS familia
+            $query = "SELECT token_app FROM usuarios_app WHERE tipo_usuario != 'familia' AND token_app IS NOT NULL AND activo = 1";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $recipients = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } else {
+            // Otros tipos mantienen lógica original
+            $query = "SELECT token_app FROM usuarios_app WHERE tipo_usuario = :tipo_usuario AND token_app IS NOT NULL AND activo = 1";
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(":tipo_usuario", $data->tipo_usuario);
+            $stmt->execute();
+            $recipients = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        }
     } else {
         // Enviar a todos los usuarios activos
         $query = "SELECT token_app FROM usuarios_app WHERE token_app IS NOT NULL AND activo = 1";
