@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Incluir archivos necesarios
 include_once '../config/database.php';
 include_once '../utils/JWTHandler.php';
+include_once '../config/FirebaseAPIv1.php';
 
 // Verificar token JWT
 $headers = getallheaders();
@@ -96,94 +97,82 @@ try {
         exit;
     }
     
-    // Preparar mensaje FCM
-    $notification = [
-        'title' => $data->title,
-        'body' => $data->body,
-        'icon' => $data->icon ?? '/assets/icon/icon.png',
-        'click_action' => $data->click_action ?? 'FLUTTER_NOTIFICATION_CLICK'
-    ];
+    // Usar Firebase API v1
+    // FirebaseAPIv1 ahora toma credenciales desde variables de entorno o desde
+    // FIREBASE_SERVICE_ACCOUNT_BASE64 (recomendado). Asegúrate de configurar .env o
+    // variables de entorno en producción en lugar de subir el JSON del service account.
+    $firebase = new FirebaseAPIv1();
     
-    $messageData = [
-        'data' => $data->data ?? [],
-        'notification' => $notification
-    ];
-    
-    // Aquí necesitarías la Server Key de Firebase
-    // Por seguridad, debería estar en variables de entorno
-    $serverKey = 'AAAAL0oUg5di1pOWmWrp3cGF37VIc8kvaqJSwfXMq9tKDGQ'; // Clave Firebase FCM
-    
-    $successCount = 0;
-    $failureCount = 0;
-    $results = [];
-    
-    foreach ($recipients as $fcmToken) {
-        $message = $messageData;
-        $message['to'] = $fcmToken;
-        
-        $result = sendFCMNotification($message, $serverKey);
-        
-        if ($result['success']) {
-            $successCount++;
-        } else {
-            $failureCount++;
+    // Preparar datos adicionales (todos los valores deben ser strings)
+    $messageData = [];
+    if (isset($data->data) && is_array($data->data)) {
+        foreach ($data->data as $key => $value) {
+            $messageData[$key] = (string)$value;
         }
-        
-        $results[] = [
-            'token' => substr($fcmToken, 0, 20) . '...', // Token parcial por seguridad
-            'success' => $result['success'],
-            'error' => $result['error'] ?? null
-        ];
     }
+    $messageData['timestamp'] = (string)time();
+    $messageData['sender'] = 'admin';
+    $defaultPublicIcon = 'https://www.cear54.com/acceso_publico/icono_b.png';
+
+    // Función para comprobar accesibilidad de una URL (HEAD con timeout corto)
+    function is_url_accessible($url) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_NOBODY, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_errno($ch);
+        curl_close($ch);
+        return ($err === 0 && $httpCode >= 200 && $httpCode < 400);
+    }
+
+    // Determinar qué icon usar: primero $data->icon si existe y es accesible,
+    // si no, intentar el icono público por defecto; si tampoco responde, dejar NULL
+    $requestedIcon = isset($data->icon) ? trim($data->icon) : null;
+    $iconToUse = null;
+
+    if (!empty($requestedIcon) && is_url_accessible($requestedIcon)) {
+        $iconToUse = $requestedIcon;
+    } elseif (is_url_accessible($defaultPublicIcon)) {
+        $iconToUse = $defaultPublicIcon;
+    } else {
+        // Ninguna URL accesible: no incluimos icon para que la app use su icono por defecto
+        $iconToUse = null;
+    }
+
+    if ($iconToUse) {
+        $messageData['icon'] = $iconToUse;
+    }
+
+    // Enviar notificación usando API v1
+    $icon = $iconToUse;
+    
+    $result = $firebase->sendMulticast(
+        $recipients,
+        $data->title,
+        $data->body,
+        $messageData,
+        $icon
+    );
     
     echo json_encode([
         'success' => true,
-        'message' => 'Notificaciones procesadas',
+        'message' => 'Notificaciones enviadas correctamente',
         'summary' => [
-            'total_sent' => count($recipients),
-            'successful' => $successCount,
-            'failed' => $failureCount
+            'total_recipients' => count($recipients),
+            'successful' => $result['success_count'],
+            'failed' => $result['failure_count']
         ],
-        'details' => $results
+        'details' => $result
     ]);
     
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Error del servidor: ' . $e->getMessage()]);
-}
-
-function sendFCMNotification($message, $serverKey) {
-    $url = 'https://fcm.googleapis.com/fcm/send';
-    
-    $headers = [
-        'Authorization: key=' . $serverKey,
-        'Content-Type: application/json'
-    ];
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($message));
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    if ($httpCode == 200) {
-        $responseData = json_decode($response, true);
-        return [
-            'success' => isset($responseData['success']) ? $responseData['success'] : true,
-            'response' => $responseData
-        ];
-    } else {
-        return [
-            'success' => false,
-            'error' => 'HTTP Error: ' . $httpCode,
-            'response' => $response
-        ];
-    }
+    echo json_encode([
+        'success' => false,
+        'error' => 'Error del servidor: ' . $e->getMessage()
+    ]);
 }
 ?>

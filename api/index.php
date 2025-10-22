@@ -45,6 +45,26 @@ switch ($path) {
         include_once 'ninos.php';
         break;
     
+    case '/update_fcm_token':
+        include_once 'update_fcm_token.php';
+        break;
+    
+    case '/send_notification':
+        include_once 'send_notification.php';
+        break;
+    
+    case '/test_firebase_v1':
+        include_once 'test_firebase_v1.php';
+        break;
+    
+    case '/test_firebase_config':
+        include_once 'test_firebase_config.php';
+        break;
+    
+    case '/test_icon_notification':
+        include_once 'test_icon_notification.php';
+        break;
+    
     case '/':
     case '':
         http_response_code(200);
@@ -56,7 +76,9 @@ switch ($path) {
                 "GET /nino" => "Obtener información de un niño (requiere autenticación)",
                 "GET /ninos" => "Obtener lista de todos los niños de la empresa (requiere autenticación)",
                 "GET /salones" => "Obtener lista de salones/grupos (requiere autenticación)",
-                "GET /personal_salon?salon_id={id}" => "Obtener personal asignado a un salón (requiere autenticación)"
+                "GET /personal_salon?salon_id={id}" => "Obtener personal asignado a un salón (requiere autenticación)",
+                "POST /update_fcm_token" => "Actualizar token FCM del usuario (requiere autenticación)",
+                "POST /send_notification" => "Enviar notificaciones push (solo administradores)"
             ),
             "authentication" => "JWT Bearer Token required for protected endpoints"
         ));
