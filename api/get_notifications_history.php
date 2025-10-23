@@ -95,16 +95,13 @@ try {
                     n.prioridad,
                     n.fecha_envio
                   " . $baseQuery . "
-                  ORDER BY n.fecha_envio DESC
-                  LIMIT :limite OFFSET :offset";
+                  ORDER BY n.fecha_envio DESC";
     
     $dataStmt = $db->prepare($dataQuery);
     
     foreach ($params as $key => $value) {
         $dataStmt->bindValue($key, $value);
     }
-    $dataStmt->bindValue(':limite', $limite, PDO::PARAM_INT);
-    $dataStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     
     $dataStmt->execute();
     $notificaciones = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -127,14 +124,6 @@ try {
     // Respuesta exitosa
     sendResponse(true, "Historial de notificaciones obtenido", [
         "notificaciones" => $notificaciones,
-        "paginacion" => [
-            "total" => $total,
-            "pagina_actual" => $pagina,
-            "limite" => $limite,
-            "total_paginas" => ceil($total / $limite),
-            "tiene_siguiente" => ($offset + $limite) < $total,
-            "tiene_anterior" => $pagina > 1
-        ],
         "estadisticas" => $estadisticas,
         "filtros_aplicados" => [
             "tipo" => $tipo,

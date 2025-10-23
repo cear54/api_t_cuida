@@ -61,41 +61,62 @@ try {
         throw new Exception("Error de conexión a la base de datos");
     }
     
-    // Obtener destinatarios
+    // Obtener destinatarios con información completa
     $recipients = [];
+    $recipientsInfo = []; // Para guardar en base de datos
     
     if (isset($data->user_id)) {
         // Enviar a usuario específico
-        $query = "SELECT token_app FROM usuarios_app WHERE id = :user_id AND token_app IS NOT NULL";
+        $query = "SELECT id, token_app FROM usuarios_app WHERE id = :user_id AND token_app IS NOT NULL";
         $stmt = $db->prepare($query);
         $stmt->bindParam(":user_id", $data->user_id);
         $stmt->execute();
-        $token = $stmt->fetchColumn();
-        if ($token) {
-            $recipients[] = $token;
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($user) {
+            $recipients[] = $user['token_app'];
+            $recipientsInfo[] = [
+                'user_id' => $user['id'],
+                'token' => $user['token_app']
+            ];
         }
     } elseif (isset($data->tipo_usuario)) {
         // Enviar según tipo de usuario
         if ($data->tipo_usuario === 'educador') {
             // EDUCADOR = todos los usuarios MENOS familia
-            $query = "SELECT token_app FROM usuarios_app WHERE tipo_usuario != 'familia' AND token_app IS NOT NULL AND activo = 1";
+            $query = "SELECT id, token_app FROM usuarios_app WHERE tipo_usuario != 'familia' AND token_app IS NOT NULL AND activo = 1";
             $stmt = $db->prepare($query);
             $stmt->execute();
-            $recipients = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } else {
             // Otros tipos mantienen lógica original
-            $query = "SELECT token_app FROM usuarios_app WHERE tipo_usuario = :tipo_usuario AND token_app IS NOT NULL AND activo = 1";
+            $query = "SELECT id, token_app FROM usuarios_app WHERE tipo_usuario = :tipo_usuario AND token_app IS NOT NULL AND activo = 1";
             $stmt = $db->prepare($query);
             $stmt->bindParam(":tipo_usuario", $data->tipo_usuario);
             $stmt->execute();
-            $recipients = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        
+        foreach ($users as $user) {
+            $recipients[] = $user['token_app'];
+            $recipientsInfo[] = [
+                'user_id' => $user['id'],
+                'token' => $user['token_app']
+            ];
         }
     } else {
         // Enviar a todos los usuarios activos
-        $query = "SELECT token_app FROM usuarios_app WHERE token_app IS NOT NULL AND activo = 1";
+        $query = "SELECT id, token_app FROM usuarios_app WHERE token_app IS NOT NULL AND activo = 1";
         $stmt = $db->prepare($query);
         $stmt->execute();
-        $recipients = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($users as $user) {
+            $recipients[] = $user['token_app'];
+            $recipientsInfo[] = [
+                'user_id' => $user['id'],
+                'token' => $user['token_app']
+            ];
+        }
     }
     
     if (empty($recipients)) {
@@ -166,14 +187,88 @@ try {
         $icon
     );
     
+    // Guardar registros en la tabla notificaciones
+    $mensaje_id = uniqid('msg_', true); // ID único para este lote de mensajes
+    
+    // Determinar el tipo de mensaje basado en los datos recibidos
+    $tipo_mensaje = 'general'; // Por defecto
+    if (isset($data->tipo_usuario)) {
+        switch ($data->tipo_usuario) {
+            case 'familia':
+                $tipo_mensaje = 'familias';
+                break;
+            case 'educador':
+                $tipo_mensaje = 'educadores';
+                break;
+            default:
+                $tipo_mensaje = 'general';
+                break;
+        }
+    }
+    
+    // Determinar prioridad (si viene en los datos o por defecto 'media')
+    $prioridad = isset($data->priority) ? $data->priority : 'media';
+    if (!in_array($prioridad, ['baja', 'media', 'alta', 'urgente'])) {
+        $prioridad = 'media';
+    }
+    
+    // Preparar datos adicionales como JSON
+    $datos_adicionales = json_encode([
+        'original_data' => $data,
+        'firebase_result' => $result,
+        'icon_used' => $iconToUse,
+        'sender_payload' => $payload
+    ]);
+    
+    // Insertar un registro por cada destinatario
+    $insertQuery = "INSERT INTO notificaciones 
+        (mensaje_id, titulo, mensaje, tipo, estado, prioridad, usuario_id, empresa_id, token_fcm, 
+         datos_adicionales, canal_notificacion, imagen_url) 
+        VALUES 
+        (:mensaje_id, :titulo, :mensaje, :tipo, :estado, :prioridad, :usuario_id, :empresa_id, :token_fcm, 
+         :datos_adicionales, :canal_notificacion, :imagen_url)";
+    
+    $insertStmt = $db->prepare($insertQuery);
+    
+    $registrosGuardados = 0;
+    foreach ($recipientsInfo as $index => $recipient) {
+        // Determinar el estado basado en el resultado de Firebase
+        $estado = 'enviado'; // Por defecto
+        if (isset($result['responses'][$index])) {
+            $estado = $result['responses'][$index]['success'] ? 'enviado' : 'error';
+        }
+        
+        try {
+            $insertStmt->execute([
+                ':mensaje_id' => $mensaje_id,
+                ':titulo' => $data->title,
+                ':mensaje' => $data->body,
+                ':tipo' => $tipo_mensaje,
+                ':estado' => $estado,
+                ':prioridad' => $prioridad,
+                ':usuario_id' => $recipient['user_id'],
+                ':empresa_id' => $payload['empresa_id'],
+                ':token_fcm' => $recipient['token'],
+                ':datos_adicionales' => $datos_adicionales,
+                ':canal_notificacion' => 'firebase_push',
+                ':imagen_url' => $iconToUse
+            ]);
+            $registrosGuardados++;
+        } catch (Exception $e) {
+            error_log("Error guardando notificación para usuario " . $recipient['user_id'] . ": " . $e->getMessage());
+        }
+    }
+    
     echo json_encode([
         'success' => true,
         'message' => 'Notificaciones enviadas correctamente',
         'summary' => [
             'total_recipients' => count($recipients),
             'successful' => $result['success_count'],
-            'failed' => $result['failure_count']
+            'failed' => $result['failure_count'],
+            'records_saved' => $registrosGuardados
         ],
+        'message_id' => $mensaje_id,
         'details' => $result
     ]);
     
