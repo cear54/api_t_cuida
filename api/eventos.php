@@ -82,6 +82,87 @@ try {
             'total' => count($eventos_procesados)
         ]);
         
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Crear nuevo evento
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        // Validar datos requeridos
+        $required_fields = ['nombre', 'fecha', 'hora_inicio', 'hora_final', 'empresa_id'];
+        foreach ($required_fields as $field) {
+            if (empty($input[$field])) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => "El campo '$field' es requerido"
+                ]);
+                exit();
+            }
+        }
+        
+        // Preparar datos del evento
+        $nombre = trim($input['nombre']);
+        $fecha = trim($input['fecha']);
+        $hora_inicio = trim($input['hora_inicio']);
+        $hora_final = trim($input['hora_final']);
+        $lugar = isset($input['lugar']) ? trim($input['lugar']) : '';
+        $observaciones = isset($input['observaciones']) ? trim($input['observaciones']) : '';
+        $color = isset($input['color']) ? trim($input['color']) : '#E91E63';
+        $empresa_id = trim($input['empresa_id']);
+        
+        // Validar formato de fecha
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Formato de fecha inválido. Use YYYY-MM-DD'
+            ]);
+            exit();
+        }
+        
+        // Validar formato de hora
+        if (!preg_match('/^\d{2}:\d{2}$/', $hora_inicio) || !preg_match('/^\d{2}:\d{2}$/', $hora_final)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Formato de hora inválido. Use HH:MM'
+            ]);
+            exit();
+        }
+        
+        // Insertar evento en la base de datos
+        $sql = "INSERT INTO eventos (nombre, fecha, hora_inicio, hora_final, lugar, observaciones, color, activo, empresa_id) 
+                VALUES (:nombre, :fecha, :hora_inicio, :hora_final, :lugar, :observaciones, :color, 1, :empresa_id)";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->bindParam(':nombre', $nombre, PDO::PARAM_STR);
+        $stmt->bindParam(':fecha', $fecha, PDO::PARAM_STR);
+        $stmt->bindParam(':hora_inicio', $hora_inicio, PDO::PARAM_STR);
+        $stmt->bindParam(':hora_final', $hora_final, PDO::PARAM_STR);
+        $stmt->bindParam(':lugar', $lugar, PDO::PARAM_STR);
+        $stmt->bindParam(':observaciones', $observaciones, PDO::PARAM_STR);
+        $stmt->bindParam(':color', $color, PDO::PARAM_STR);
+        $stmt->bindParam(':empresa_id', $empresa_id, PDO::PARAM_STR);
+        
+        if ($stmt->execute()) {
+            $evento_id = $db->lastInsertId();
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Evento creado exitosamente',
+                'data' => [
+                    'id' => $evento_id,
+                    'nombre' => $nombre,
+                    'fecha' => $fecha,
+                    'hora_inicio' => $hora_inicio,
+                    'hora_final' => $hora_final,
+                    'lugar' => $lugar,
+                    'observaciones' => $observaciones,
+                    'color' => $color,
+                    'activo' => '1',
+                    'empresa_id' => $empresa_id
+                ]
+            ]);
+        } else {
+            throw new Exception('Error al insertar evento en la base de datos');
+        }
+        
     } else {
         // Método no permitido
         http_response_code(405);
