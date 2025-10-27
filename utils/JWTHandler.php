@@ -140,6 +140,33 @@ class JWTHandler {
             exit();
         }
         
+        // Verificar que el usuario esté activo en la base de datos
+        $userId = $userData['user_id'] ?? $userData['id'] ?? null;
+        if ($userId) {
+            try {
+                require_once __DIR__ . '/../config/database.php';
+                $database = new Database();
+                $db = $database->getConnection();
+                
+                $stmt = $db->prepare("SELECT activo FROM usuarios_app WHERE id = ?");
+                $stmt->execute([$userId]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$user || $user['activo'] != 1) {
+                    http_response_code(401);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Usuario inactivo o deshabilitado'
+                    ]);
+                    exit();
+                }
+            } catch (Exception $e) {
+                // En caso de error de DB, permitir continuar para no romper la app
+                // pero loggear el error
+                error_log("Error verificando estado de usuario: " . $e->getMessage());
+            }
+        }
+        
         return $userData;
     }
 }
