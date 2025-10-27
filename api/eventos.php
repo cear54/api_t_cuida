@@ -163,6 +163,159 @@ try {
             throw new Exception('Error al insertar evento en la base de datos');
         }
         
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+        // Modificar evento existente
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        // Validar datos requeridos
+        $required_fields = ['id', 'nombre', 'fecha', 'hora_inicio', 'hora_final', 'empresa_id'];
+        foreach ($required_fields as $field) {
+            if (empty($input[$field])) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => "El campo '$field' es requerido"
+                ]);
+                exit();
+            }
+        }
+        
+        // Preparar datos del evento
+        $id = trim($input['id']);
+        $nombre = trim($input['nombre']);
+        $fecha = trim($input['fecha']);
+        $hora_inicio = trim($input['hora_inicio']);
+        $hora_final = trim($input['hora_final']);
+        $lugar = isset($input['lugar']) ? trim($input['lugar']) : '';
+        $observaciones = isset($input['observaciones']) ? trim($input['observaciones']) : '';
+        $color = isset($input['color']) ? trim($input['color']) : '#E91E63';
+        $empresa_id = trim($input['empresa_id']);
+        
+        // Validar formato de fecha
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Formato de fecha inválido. Use YYYY-MM-DD'
+            ]);
+            exit();
+        }
+        
+        // Validar formato de hora
+        if (!preg_match('/^\d{2}:\d{2}$/', $hora_inicio) || !preg_match('/^\d{2}:\d{2}$/', $hora_final)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Formato de hora inválido. Use HH:MM'
+            ]);
+            exit();
+        }
+        
+        // Verificar que el evento pertenece a la empresa
+        $check_sql = "SELECT id FROM eventos WHERE id = :id AND empresa_id = :empresa_id";
+        $check_stmt = $db->prepare($check_sql);
+        $check_stmt->bindParam(':id', $id, PDO::PARAM_STR);
+        $check_stmt->bindParam(':empresa_id', $empresa_id, PDO::PARAM_STR);
+        $check_stmt->execute();
+        
+        if ($check_stmt->rowCount() === 0) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Evento no encontrado o no pertenece a esta empresa'
+            ]);
+            exit();
+        }
+        
+        // Actualizar evento en la base de datos
+        $sql = "UPDATE eventos SET 
+                    nombre = :nombre, 
+                    fecha = :fecha, 
+                    hora_inicio = :hora_inicio, 
+                    hora_final = :hora_final, 
+                    lugar = :lugar, 
+                    observaciones = :observaciones, 
+                    color = :color 
+                WHERE id = :id AND empresa_id = :empresa_id";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->bindParam(':id', $id, PDO::PARAM_STR);
+        $stmt->bindParam(':nombre', $nombre, PDO::PARAM_STR);
+        $stmt->bindParam(':fecha', $fecha, PDO::PARAM_STR);
+        $stmt->bindParam(':hora_inicio', $hora_inicio, PDO::PARAM_STR);
+        $stmt->bindParam(':hora_final', $hora_final, PDO::PARAM_STR);
+        $stmt->bindParam(':lugar', $lugar, PDO::PARAM_STR);
+        $stmt->bindParam(':observaciones', $observaciones, PDO::PARAM_STR);
+        $stmt->bindParam(':color', $color, PDO::PARAM_STR);
+        $stmt->bindParam(':empresa_id', $empresa_id, PDO::PARAM_STR);
+        
+        if ($stmt->execute()) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Evento actualizado exitosamente',
+                'data' => [
+                    'id' => $id,
+                    'nombre' => $nombre,
+                    'fecha' => $fecha,
+                    'hora_inicio' => $hora_inicio,
+                    'hora_final' => $hora_final,
+                    'lugar' => $lugar,
+                    'observaciones' => $observaciones,
+                    'color' => $color,
+                    'empresa_id' => $empresa_id
+                ]
+            ]);
+        } else {
+            throw new Exception('Error al actualizar evento en la base de datos');
+        }
+        
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+        // Eliminar evento
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        // Validar datos requeridos
+        if (empty($input['id']) || empty($input['empresa_id'])) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Los campos id y empresa_id son requeridos'
+            ]);
+            exit();
+        }
+        
+        $id = trim($input['id']);
+        $empresa_id = trim($input['empresa_id']);
+        
+        // Verificar que el evento pertenece a la empresa
+        $check_sql = "SELECT id, nombre FROM eventos WHERE id = :id AND empresa_id = :empresa_id";
+        $check_stmt = $db->prepare($check_sql);
+        $check_stmt->bindParam(':id', $id, PDO::PARAM_STR);
+        $check_stmt->bindParam(':empresa_id', $empresa_id, PDO::PARAM_STR);
+        $check_stmt->execute();
+        
+        $evento = $check_stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$evento) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Evento no encontrado o no pertenece a esta empresa'
+            ]);
+            exit();
+        }
+        
+        // Eliminar evento de la base de datos
+        $sql = "DELETE FROM eventos WHERE id = :id AND empresa_id = :empresa_id";
+        $stmt = $db->prepare($sql);
+        $stmt->bindParam(':id', $id, PDO::PARAM_STR);
+        $stmt->bindParam(':empresa_id', $empresa_id, PDO::PARAM_STR);
+        
+        if ($stmt->execute()) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Evento eliminado exitosamente',
+                'data' => [
+                    'id' => $id,
+                    'nombre' => $evento['nombre']
+                ]
+            ]);
+        } else {
+            throw new Exception('Error al eliminar evento de la base de datos');
+        }
+        
     } else {
         // Método no permitido
         http_response_code(405);

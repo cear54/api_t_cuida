@@ -3,7 +3,12 @@
 # Habilitar rewrite engine
 RewriteEngine On
 
-# Redirigir todo al index.php (excepto archivos existentes)
+# PERMITIR ACCESO DIRECTO A ARCHIVOS DE IMAGEN Y RECURSOS ESTÁTICOS
+# Esto debe ir ANTES de cualquier otra regla de rewrite
+RewriteCond %{REQUEST_FILENAME} \.(jpg|jpeg|png|gif|bmp|svg|ico|css|js|pdf)$ [NC]
+RewriteRule ^ - [L]
+
+# Redirigir todo el resto al index.php (excepto archivos existentes)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^api/(.*)$ api/index.php [QSA,L]
@@ -15,11 +20,19 @@ Header always set X-XSS-Protection "1; mode=block"
 Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 
 # CORS para producción (ajustar según tu dominio)
-Header always set Access-Control-Allow-Origin "https://tudominio.com"
+Header always set Access-Control-Allow-Origin "*"
 Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
 Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
 
-# Evitar acceso directo a archivos sensibles
+# Permitir acceso a archivos de imagen y recursos estáticos
+<FilesMatch "\.(jpg|jpeg|png|gif|bmp|svg|ico|css|js|pdf)$">
+    Order Allow,Deny
+    Allow from all
+    # No aplicar reglas de autenticación a estos archivos
+    Satisfy Any
+</FilesMatch>
+
+# Evitar acceso directo a archivos PHP sensibles (excepto imágenes y archivos públicos)
 <Files "*.php">
     Order Deny,Allow
     Deny from all

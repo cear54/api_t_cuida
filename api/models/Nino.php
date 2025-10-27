@@ -53,7 +53,7 @@ class Nino {
     // Obtener niño por ID
     public function getNinoById() {
         $query = "SELECT n.id, n.nombre, n.apellido_paterno, n.apellido_materno, n.fecha_nacimiento, n.genero, 
-                         n.grupo_id, n.curp, n.imagen, n.tiene_alergias, n.alergias, n.toma_medicamentos, 
+                         n.salon_id, n.curp, n.imagen, n.tiene_alergias, n.alergias, n.toma_medicamentos, 
                          n.medicamentos, n.tiene_condiciones_medicas, n.condiciones_medicas,
                          n.contacto_emergencia, n.parentesco_emergencia, n.telefono_emergencia, 
                          n.imagen_contacto_1, n.email_emergencia, n.contacto_emergencia_2, 
@@ -61,11 +61,11 @@ class Nino {
                          n.email_emergencia_2, n.contacto_emergencia_3, n.parentesco_emergencia_3, 
                          n.telefono_emergencia_3, n.imagen_contacto_3, n.email_emergencia_3,
                          n.activo, n.fecha_inscripcion, n.fecha_creacion, n.fecha_actualizacion, 
-                         n.empresa_id, n.salon_id, n.contacto_emergencia_4, n.parentesco_emergencia_4, 
+                         n.empresa_id, n.contacto_emergencia_4, n.parentesco_emergencia_4, 
                          n.telefono_emergencia_4, n.imagen_contacto_4, n.email_emergencia_4,
                          s.nombre as salon_nombre
                   FROM " . $this->table_name . " n
-                  LEFT JOIN salones s ON n.grupo_id = s.id
+                  LEFT JOIN salones s ON n.salon_id = s.id
                   WHERE n.id = :id 
                   LIMIT 0,1";
 
@@ -84,7 +84,7 @@ class Nino {
             $this->apellido_materno = $row['apellido_materno'];
             $this->fecha_nacimiento = $row['fecha_nacimiento'];
             $this->genero = $row['genero'];
-            $this->grupo_id = $row['grupo_id'];
+            $this->salon_id = $row['salon_id'];
             $this->curp = $row['curp'];
             $this->imagen = $row['imagen'];
             $this->tiene_alergias = $row['tiene_alergias'];
@@ -129,25 +129,27 @@ class Nino {
     // Crear niño
     public function create() {
         $query = "INSERT INTO " . $this->table_name . "
-                  SET nombre=:nombre, apellidos=:apellidos, fecha_nacimiento=:fecha_nacimiento, 
-                      genero=:genero, personal_id=:personal_id, empresa_id=:empresa_id";
+                  SET nombre=:nombre, apellido_paterno=:apellido_paterno, apellido_materno=:apellido_materno, 
+                      fecha_nacimiento=:fecha_nacimiento, genero=:genero, salon_id=:salon_id, empresa_id=:empresa_id";
 
         $stmt = $this->conn->prepare($query);
 
         // Sanitizar datos
         $this->nombre = htmlspecialchars(strip_tags($this->nombre));
-        $this->apellidos = htmlspecialchars(strip_tags($this->apellidos));
+        $this->apellido_paterno = htmlspecialchars(strip_tags($this->apellido_paterno));
+        $this->apellido_materno = htmlspecialchars(strip_tags($this->apellido_materno));
         $this->fecha_nacimiento = htmlspecialchars(strip_tags($this->fecha_nacimiento));
         $this->genero = htmlspecialchars(strip_tags($this->genero));
-        $this->personal_id = htmlspecialchars(strip_tags($this->personal_id));
+        $this->salon_id = htmlspecialchars(strip_tags($this->salon_id));
         $this->empresa_id = htmlspecialchars(strip_tags($this->empresa_id));
 
         // Bind parameters
         $stmt->bindParam(':nombre', $this->nombre);
-        $stmt->bindParam(':apellidos', $this->apellidos);
+        $stmt->bindParam(':apellido_paterno', $this->apellido_paterno);
+        $stmt->bindParam(':apellido_materno', $this->apellido_materno);
         $stmt->bindParam(':fecha_nacimiento', $this->fecha_nacimiento);
         $stmt->bindParam(':genero', $this->genero);
-        $stmt->bindParam(':personal_id', $this->personal_id);
+        $stmt->bindParam(':salon_id', $this->salon_id);
         $stmt->bindParam(':empresa_id', $this->empresa_id);
 
         if($stmt->execute()) {
