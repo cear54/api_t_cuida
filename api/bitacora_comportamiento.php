@@ -73,6 +73,23 @@ try {
         echo json_encode(['error' => 'Token no contiene información de personal']);
         exit;
     }
+    
+    // Validar suscripción de la empresa
+    require_once '../middleware/subscription_validator.php';
+    $database = new Database();
+    $db = $database->getConnection();
+    
+    $subscriptionStatus = SubscriptionValidator::validateSubscription($db, $empresaId);
+    
+    if (!$subscriptionStatus['valid']) {
+        http_response_code($subscriptionStatus['code']);
+        echo json_encode([
+            'success' => false,
+            'message' => $subscriptionStatus['message']
+        ]);
+        exit;
+    }
+    
 } catch (Exception $e) {
     http_response_code(401);
     echo json_encode(['error' => 'Token inválido']);

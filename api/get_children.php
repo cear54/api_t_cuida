@@ -79,6 +79,22 @@ try {
 
     $database = new Database();
     $conn = $database->getConnection();
+    
+    // Validar suscripción de la empresa
+    if ($empresa_id) {
+        require_once '../middleware/subscription_validator.php';
+        $subscriptionStatus = SubscriptionValidator::validateSubscription($conn, $empresa_id);
+        
+        if (!$subscriptionStatus['valid']) {
+            http_response_code($subscriptionStatus['code']);
+            echo json_encode([
+                'success' => false,
+                'message' => $subscriptionStatus['message']
+            ]);
+            exit;
+        }
+    }
+    $conn = $database->getConnection();
 
     // Obtener los niños asignados al salón del personal académico
     $query = "

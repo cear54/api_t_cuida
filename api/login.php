@@ -59,6 +59,50 @@ try {
         
         // Verificar contraseña
         if (password_verify($data->password, $row['password'])) {
+            // Verificar suscripción de la empresa
+            $empresa_id = $row['empresa_id'];
+            $fecha_actual = date('Y-m-d');
+            
+            $query_suscripcion = "SELECT id, estado, fecha_fin, fecha_fin_prueba, en_periodo_prueba 
+                                  FROM suscripciones 
+                                  WHERE empresa_id = :empresa_id 
+                                  ORDER BY id DESC 
+                                  LIMIT 1";
+            
+            $stmt_suscripcion = $db->prepare($query_suscripcion);
+            $stmt_suscripcion->bindParam(":empresa_id", $empresa_id);
+            $stmt_suscripcion->execute();
+            
+            if ($stmt_suscripcion->rowCount() > 0) {
+                $suscripcion = $stmt_suscripcion->fetch(PDO::FETCH_ASSOC);
+                
+                // Verificar si la suscripción está en un estado válido
+                $estado = $suscripcion['estado'];
+                if ($estado === 'vencida' || $estado === 'cancelada' || $estado === 'suspendida') {
+                    $mensaje = "Su suscripción está " . $estado . ". Contacte al administrador para reactivarla.";
+                    sendResponse(false, $mensaje, null, 403);
+                }
+                
+                // Verificar fechas de vencimiento
+                $fecha_fin = $suscripcion['fecha_fin'];
+                $fecha_fin_prueba = $suscripcion['fecha_fin_prueba'];
+                
+                // Si está en período de prueba, verificar fecha_fin_prueba
+                if ($suscripcion['en_periodo_prueba'] == 1) {
+                    if (!empty($fecha_fin_prueba) && $fecha_actual > $fecha_fin_prueba) {
+                        sendResponse(false, "El período de prueba ha finalizado. Contacte al administrador para renovar su suscripción.", null, 403);
+                    }
+                } else {
+                    // Si no está en prueba, verificar fecha_fin
+                    if (!empty($fecha_fin) && $fecha_actual > $fecha_fin) {
+                        sendResponse(false, "Su suscripción ha expirado. Contacte al administrador para renovar.", null, 403);
+                    }
+                }
+            } else {
+                // No existe registro de suscripción para esta empresa
+                sendResponse(false, "No se encontró una suscripción válida para su empresa. Contacte al administrador.", null, 403);
+            }
+            
             // Login exitoso - Generar JWT
             $tokenData = array(
                 "id" => $row['id'],

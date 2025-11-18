@@ -78,6 +78,23 @@ try {
         exit;
     }
     
+    // Validar suscripción de la empresa
+    require_once '../middleware/subscription_validator.php';
+    $database = new Database();
+    $db = $database->getConnection();
+    
+    $subscriptionStatus = SubscriptionValidator::validateSubscription($db, $empresaId);
+    
+    if (!$subscriptionStatus['valid']) {
+        error_log("DEBUG: Subscription validation failed: " . $subscriptionStatus['message']);
+        http_response_code($subscriptionStatus['code']);
+        echo json_encode([
+            'success' => false,
+            'message' => $subscriptionStatus['message']
+        ]);
+        exit;
+    }
+    
     error_log("DEBUG: User ID: $userId, Empresa ID: $empresaId");
 } catch (Exception $e) {
     error_log("DEBUG: JWT Exception: " . $e->getMessage() . " | Stack: " . $e->getTraceAsString());

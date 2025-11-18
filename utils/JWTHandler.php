@@ -88,6 +88,15 @@ class JWTHandler {
         }
     }
     
+    // Alias para validateToken (usado por middleware)
+    public static function validateToken($token) {
+        $result = self::verifyToken($token);
+        if ($result) {
+            return (object) $result;
+        }
+        return false;
+    }
+    
     // Obtener token del header Authorization
     public static function getTokenFromHeader() {
         $headers = apache_request_headers();
@@ -160,6 +169,23 @@ class JWTHandler {
                     ]);
                     exit();
                 }
+                
+                // Verificar suscripción de la empresa
+                $empresa_id = $userData['empresa_id'] ?? null;
+                if ($empresa_id) {
+                    require_once __DIR__ . '/../middleware/subscription_validator.php';
+                    $subscriptionStatus = SubscriptionValidator::validateSubscription($db, $empresa_id);
+                    
+                    if (!$subscriptionStatus['valid']) {
+                        http_response_code($subscriptionStatus['code']);
+                        echo json_encode([
+                            'success' => false,
+                            'message' => $subscriptionStatus['message']
+                        ]);
+                        exit();
+                    }
+                }
+                
             } catch (Exception $e) {
                 // En caso de error de DB, permitir continuar para no romper la app
                 // pero loggear el error
