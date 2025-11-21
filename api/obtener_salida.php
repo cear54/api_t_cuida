@@ -98,7 +98,7 @@ try {
         throw new Exception('Menor no encontrado o no pertenece a su empresa');
     }
 
-    // Obtener información de salida para la fecha específica
+    // Obtener información de salida para la fecha específica con datos del niño
     $stmt = $pdo->prepare("
         SELECT 
             s.id,
@@ -109,8 +109,15 @@ try {
             s.quien_recoge,
             s.entregado_limpio,
             s.entregado_con_pertenencias,
-            s.created_at
+            s.created_at,
+            n.nombre,
+            n.apellido_paterno,
+            n.apellido_materno,
+            n.imagen AS nino_imagen,
+            n.genero,
+            CONCAT(n.nombre, ' ', n.apellido_paterno, ' ', COALESCE(n.apellido_materno, '')) AS nombre_completo
         FROM salidas s
+        INNER JOIN ninos n ON s.nino_id = n.id
         WHERE s.nino_id = ? 
             AND s.empresa_id = ? 
             AND s.fecha = ?
