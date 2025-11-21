@@ -143,6 +143,9 @@ $descripcionAccidente = $input['descripcion_accidente'] ?? null;
 $problemaSalud = isset($input['problema_salud']) ? (bool)$input['problema_salud'] : false;
 $descripcionSalud = $input['descripcion_salud'] ?? null;
 
+// Observaciones
+$observaciones = $input['observaciones'] ?? null;
+
 // Imágenes (pueden venir como array o como campos individuales)
 $imagen1 = null;
 $imagen2 = null;
@@ -223,6 +226,7 @@ try {
                             descripcion_accidente = :descripcion_accidente,
                             problema_salud = :problema_salud,
                             descripcion_salud = :descripcion_salud,
+                            observaciones = :observaciones,
                             imagen1 = :imagen1,
                             imagen2 = :imagen2,
                             imagen3 = :imagen3,
@@ -248,6 +252,7 @@ try {
         $updateStmt->bindParam(':descripcion_accidente', $descripcionAccidente);
         $updateStmt->bindParam(':problema_salud', $problemaSalud, PDO::PARAM_BOOL);
         $updateStmt->bindParam(':descripcion_salud', $descripcionSalud);
+        $updateStmt->bindParam(':observaciones', $observaciones);
         $updateStmt->bindParam(':imagen1', $imagen1);
         $updateStmt->bindParam(':imagen2', $imagen2);
         $updateStmt->bindParam(':imagen3', $imagen3);
@@ -288,6 +293,7 @@ try {
                             descripcion_accidente,
                             problema_salud,
                             descripcion_salud,
+                            observaciones,
                             imagen1,
                             imagen2,
                             imagen3,
@@ -314,6 +320,7 @@ try {
                             :descripcion_accidente,
                             :problema_salud,
                             :descripcion_salud,
+                            :observaciones,
                             :imagen1,
                             :imagen2,
                             :imagen3,
@@ -342,6 +349,7 @@ try {
         $insertStmt->bindParam(':descripcion_accidente', $descripcionAccidente);
         $insertStmt->bindParam(':problema_salud', $problemaSalud, PDO::PARAM_BOOL);
         $insertStmt->bindParam(':descripcion_salud', $descripcionSalud);
+        $insertStmt->bindParam(':observaciones', $observaciones);
         $insertStmt->bindParam(':imagen1', $imagen1);
         $insertStmt->bindParam(':imagen2', $imagen2);
         $insertStmt->bindParam(':imagen3', $imagen3);

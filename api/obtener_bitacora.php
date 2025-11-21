@@ -178,6 +178,7 @@ try {
                     'problema_salud' => (bool)$bitacora['problema_salud'],
                     'descripcion_salud' => $bitacora['descripcion_salud']
                 ],
+                'observaciones' => $bitacora['observaciones'],
                 'imagenes' => [
                     'imagen1' => $bitacora['imagen1'],
                     'imagen2' => $bitacora['imagen2'],
