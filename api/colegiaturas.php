@@ -165,7 +165,7 @@ function handleGetByNino($db, $input, $usuarioId, $empresaId, $decodedToken) {
                 np.periodo_13, np.periodo_14, np.periodo_15, np.periodo_16, np.periodo_17
             FROM colegiaturas_2 c
             JOIN ninos n ON c.nino_id = n.id
-            LEFT JOIN nombres_periodos np ON c.nino_id = np.nino_id
+            LEFT JOIN nombres_periodos np ON c.id = np.ciclo_id
             WHERE c.nino_id = ? 
             AND c.empresa_id = ? 
             AND c.activo = 1
@@ -181,15 +181,26 @@ function handleGetByNino($db, $input, $usuarioId, $empresaId, $decodedToken) {
             // Agregar nombre completo
             $result['nino_nombre_completo'] = trim($result['nino_nombre'] . ' ' . $result['apellido_paterno'] . ' ' . $result['apellido_materno']);
             
-            // Procesar nombres de períodos - solo incluir los que no sean "sin_definir"
+            // Procesar nombres de períodos - solo incluir los que no sean "sin_definir" y tengan monto
             $result['nombres_periodos'] = [];
+            $periodosExcluidos = [];
             for ($i = 1; $i <= 17; $i++) {
                 $nombrePeriodo = $result["periodo_$i"] ?? 'sin_definir';
-                if ($nombrePeriodo !== 'sin_definir' && !empty($nombrePeriodo)) {
+                $monto = floatval($result["pago_$i"] ?? 0);
+                
+                // Solo incluir si tiene nombre válido Y tiene monto configurado
+                if ($nombrePeriodo !== 'sin_definir' && !empty($nombrePeriodo) && $monto > 0) {
                     $result['nombres_periodos'][$i] = $nombrePeriodo;
+                } else if ($nombrePeriodo === 'sin_definir' || empty($nombrePeriodo) || $monto <= 0) {
+                    $periodosExcluidos[] = "P$i (nombre: '$nombrePeriodo', monto: $monto)";
                 }
                 // Limpiar los campos individuales del resultado
                 unset($result["periodo_$i"]);
+            }
+            
+            error_log("✅ DEBUG: Períodos incluidos: " . json_encode($result['nombres_periodos']));
+            if (!empty($periodosExcluidos)) {
+                error_log("🚫 DEBUG: Períodos excluidos: " . implode(", ", $periodosExcluidos));
             }
             
             error_log("✅ DEBUG: Colegiaturas encontradas para: " . $result['nino_nombre_completo']);
@@ -352,7 +363,7 @@ function handleGetResumen($db, $input, $usuarioId, $empresaId, $decodedToken) {
             sendJsonResponse(false, 'No se encontraron colegiaturas activas para generar resumen');
         }
 
-        // Calcular resumen detallado
+        // Calcular resumen detallado - solo períodos con monto válido
         $totalPeriodos = 0;
         $pagosRealizados = 0;
         $montoTotal = 0;
@@ -362,6 +373,7 @@ function handleGetResumen($db, $input, $usuarioId, $empresaId, $decodedToken) {
 
         for ($i = 1; $i <= 17; $i++) {
             $monto = floatval($colegiatura["pago_$i"] ?? 0);
+            // Solo procesar períodos con monto válido (mayor a 0)
             if ($monto > 0) {
                 $totalPeriodos++;
                 $montoTotal += $monto;
