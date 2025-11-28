@@ -102,20 +102,9 @@ function obtenerTareas($db, $usuario) {
         
         // Filtros según el rol
         if ($rol === 'familia') {
-            // Los padres ven tareas de sus hijos
-            $whereConditions[] = "EXISTS (
-                SELECT 1 FROM ninos n 
-                WHERE n.salon_id = t.salon_id 
-                AND n.empresa_id = ? 
-                AND (
-                    n.email_emergencia = ? OR 
-                    n.email_emergencia_2 = ? OR 
-                    n.email_emergencia_3 = ? OR 
-                    n.email_emergencia_4 = ?
-                )
-            )";
-            $email = $usuario['email'];
-            array_push($params, $empresa_id, $email, $email, $email, $email);
+            // Para usuarios familia, redirigir a usar tareas_familia.php endpoint específico
+            throw new Exception('Los usuarios familia deben usar el endpoint tareas_familia.php');
+            
         } else if ($rol === 'academico') {
             // Los educadores ven solo tareas de su salón asignado
             // Obtener personal_id del usuario académico
@@ -208,6 +197,11 @@ function obtenerTareas($db, $usuario) {
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $tareas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Debug logging básico
+        if ($rol === 'academico') {
+            error_log("DEBUG TAREAS ACADEMICO - Total encontradas: " . count($tareas));
+        }
         
         // Formatear las tareas
         $tareasFormateadas = [];

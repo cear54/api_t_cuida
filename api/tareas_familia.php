@@ -100,9 +100,9 @@ function obtenerTareasFamilia($db, $usuario) {
         error_log("DEBUG FAMILIA - Empresa ID: $empresa_id");
         error_log("DEBUG FAMILIA - Niño ID: $nino_id");
         
-        // Paso 1: Buscar grupo_id del niño en la tabla ninos
+        // Paso 1: Buscar grupo_id/salon_id del niño en la tabla ninos
         $stmt = $db->prepare("
-            SELECT grupo_id, nombre, apellido_paterno, apellido_materno
+            SELECT grupo_id, salon_id, nombre, apellido_paterno, apellido_materno
             FROM ninos 
             WHERE empresa_id = ? AND id = ?
         ");
@@ -113,26 +113,31 @@ function obtenerTareasFamilia($db, $usuario) {
             throw new Exception('No se encontró el niño especificado en la empresa');
         }
         
-        $grupo_id = $nino['grupo_id'];
+        // Usar salon_id o grupo_id, el que esté disponible
+        $salon_grupo_id = $nino['salon_id'] ?? $nino['grupo_id'] ?? null;
         $nino_nombre = trim($nino['nombre'] . ' ' . $nino['apellido_paterno'] . ' ' . $nino['apellido_materno']);
         
-        error_log("DEBUG FAMILIA - Grupo ID encontrado: $grupo_id");
+        error_log("DEBUG FAMILIA - Salon ID: " . ($nino['salon_id'] ?? 'NULL'));
+        error_log("DEBUG FAMILIA - Grupo ID: " . ($nino['grupo_id'] ?? 'NULL'));
+        error_log("DEBUG FAMILIA - Usando salon/grupo ID: " . ($salon_grupo_id ?? 'NULL'));
         error_log("DEBUG FAMILIA - Nombre del niño: $nino_nombre");
         
-        if (!$grupo_id) {
-            // Si no tiene grupo_id, retornar respuesta vacía pero exitosa
+        if (!$salon_grupo_id) {
+            // Si no tiene salon_id ni grupo_id, retornar respuesta vacía pero exitosa
             echo json_encode([
                 'success' => true,
                 'tareas' => [],
                 'total' => 0,
                 'usuario_rol' => 'familia',
                 'nino_nombre' => $nino_nombre,
-                'grupo_id' => null,
-                'message' => 'El niño no tiene un grupo asignado',
+                'salon_id' => $nino['salon_id'] ?? null,
+                'grupo_id' => $nino['grupo_id'] ?? null,
+                'message' => 'El niño no tiene un grupo/salón asignado',
                 'debug' => [
                     'empresa_id' => $empresa_id,
                     'nino_id' => $nino_id,
-                    'grupo_id' => $grupo_id
+                    'salon_id' => $nino['salon_id'] ?? null,
+                    'grupo_id' => $nino['grupo_id'] ?? null
                 ]
             ]);
             return;
@@ -178,13 +183,36 @@ function obtenerTareasFamilia($db, $usuario) {
         ";
         
         error_log("DEBUG FAMILIA - SQL: $sql");
-        error_log("DEBUG FAMILIA - Parámetros: empresa_id=$empresa_id, salon_id=$grupo_id");
+        error_log("DEBUG FAMILIA - Parámetros: empresa_id=$empresa_id, salon_id=$salon_grupo_id");
         
         $stmt = $db->prepare($sql);
-        $stmt->execute([$empresa_id, $grupo_id]);
+        $stmt->execute([$empresa_id, $salon_grupo_id]);
         $tareas = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         error_log("DEBUG FAMILIA - Tareas encontradas: " . count($tareas));
+        
+        // Si no hay tareas, hacer consultas adicionales para debug
+        if (count($tareas) === 0) {
+            // Verificar si existen tareas en la tabla para esta empresa
+            $debug_stmt = $db->prepare("SELECT COUNT(*) as total FROM tareas WHERE empresa_id = ? AND activo = 1");
+            $debug_stmt->execute([$empresa_id]);
+            $total_tareas_empresa = $debug_stmt->fetch(PDO::FETCH_ASSOC)['total'];
+            error_log("DEBUG FAMILIA - Total tareas en la empresa: $total_tareas_empresa");
+            
+            // Verificar si existen tareas para el salon_id específico
+            if ($salon_grupo_id) {
+                $debug_stmt2 = $db->prepare("SELECT COUNT(*) as total FROM tareas WHERE empresa_id = ? AND salon_id = ? AND activo = 1");
+                $debug_stmt2->execute([$empresa_id, $salon_grupo_id]);
+                $total_tareas_salon = $debug_stmt2->fetch(PDO::FETCH_ASSOC)['total'];
+                error_log("DEBUG FAMILIA - Total tareas para salon_id $salon_grupo_id: $total_tareas_salon");
+                
+                // Listar todas las tareas de este salón para debug
+                $debug_stmt3 = $db->prepare("SELECT id, titulo, salon_id, nino_id FROM tareas WHERE empresa_id = ? AND salon_id = ? AND activo = 1 LIMIT 3");
+                $debug_stmt3->execute([$empresa_id, $salon_grupo_id]);
+                $debug_tareas = $debug_stmt3->fetchAll(PDO::FETCH_ASSOC);
+                error_log("DEBUG FAMILIA - Primeras 3 tareas del salón: " . json_encode($debug_tareas));
+            }
+        }
         
         // Formatear resultados
         $tareasFormateadas = [];
@@ -219,20 +247,29 @@ function obtenerTareasFamilia($db, $usuario) {
             ];
         }
         
-        echo json_encode([
+        $response = [
             'success' => true,
             'tareas' => $tareasFormateadas,
             'total' => count($tareasFormateadas),
             'usuario_rol' => 'familia',
             'nino_nombre' => $nino_nombre,
-            'grupo_id' => $grupo_id,
+            'salon_id' => $nino['salon_id'] ?? null,
+            'grupo_id' => $nino['grupo_id'] ?? null,
+            'salon_grupo_id_usado' => $salon_grupo_id,
             'debug' => [
                 'empresa_id' => $empresa_id,
                 'nino_id' => $nino_id,
-                'grupo_id' => $grupo_id,
-                'sql_executed' => true
+                'salon_id' => $nino['salon_id'] ?? null,
+                'grupo_id' => $nino['grupo_id'] ?? null,
+                'salon_grupo_id_usado' => $salon_grupo_id,
+                'sql_executed' => true,
+                'nino_data' => $nino ?? null
             ]
-        ]);
+        ];
+        
+        error_log("DEBUG FAMILIA - Respuesta final: " . json_encode($response));
+        
+        echo json_encode($response);
         
     } catch (Exception $e) {
         error_log("Error obteniendo tareas familia: " . $e->getMessage());
