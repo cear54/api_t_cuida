@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Incluir archivos necesarios
 include_once '../config/database.php';
 include_once '../utils/JWTHandler.php';
+include_once '../includes/timezone_helper.php';
 
 // Verificar token JWT - Múltiples métodos para obtener el header Authorization
 $authHeader = null;
@@ -192,7 +193,7 @@ try {
     }
 
     // Verificar si ya existe una bitácora para hoy
-    $today = date('Y-m-d');
+    $today = TimezoneHelper::getCurrentDate();
     $existingQuery = "SELECT id FROM bitacoras 
                       WHERE nino_id = :nino_id 
                       AND empresa_id = :empresa_id 

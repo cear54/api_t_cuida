@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../utils/JWTHandler.php';
+require_once '../includes/timezone_helper.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -108,7 +109,7 @@ if (!$input || !isset($input['nino_id'])) {
 
 $ninoId = $input['nino_id'];
 $observaciones = $input['observaciones'] ?? '';
-$hora_salida = $input['hora_salida'] ?? date('H:i:s');
+$hora_salida = $input['hora_salida'] ?? TimezoneHelper::getCurrentTime();
 
 try {
     $database = new Database();
@@ -131,7 +132,7 @@ try {
     }
 
     // Buscar registro de entrada para hoy
-    $today = date('Y-m-d');
+    $today = TimezoneHelper::getCurrentDate();
     $findQuery = "SELECT id FROM asistencias 
                   WHERE nino_id = :nino_id 
                   AND empresa_id = :empresa_id 

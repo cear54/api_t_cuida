@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../utils/JWTHandler.php';
+require_once '../includes/timezone_helper.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -91,7 +92,12 @@ error_log("   empresa_id: " . $empresaId);
 
 // Si exclude_today es true, obtener todas las fechas excepto hoy
 if ($excludeToday && !$fecha && !$fechaInicio && !$fechaFin) {
-    $fechaFin = date('Y-m-d', strtotime('-1 day')); // Hasta ayer
+    $fechaFin = TimezoneHelper::getCurrentDate(); // Hasta hoy por defecto
+    if ($fechaInicio) {
+        // Si hay fecha de inicio, usar hasta ayer para el rango
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
+        $fechaFin = $yesterday;
+    }
     error_log("   exclude_today activado - fecha_fin establecida a: " . $fechaFin);
 }
 
@@ -189,7 +195,7 @@ try {
 
     // Obtener resumen si es consulta del día actual
     $resumen = null;
-    if ($fecha === date('Y-m-d') && !$ninoId) {
+    if ($fecha === TimezoneHelper::getCurrentDate() && !$ninoId) {
         $resumenQuery = "SELECT 
                             COUNT(*) as total_ninos,
                             COUNT(CASE WHEN a.hora_entrada IS NOT NULL THEN 1 END) as presentes,

@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../utils/JWTHandler.php';
+require_once '../includes/timezone_helper.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -73,7 +74,7 @@ try {
     exit;
 }
 
-$fecha = $_GET['fecha'] ?? date('Y-m-d');
+$fecha = $_GET['fecha'] ?? TimezoneHelper::getCurrentDate();
 
 try {
     $database = new Database();

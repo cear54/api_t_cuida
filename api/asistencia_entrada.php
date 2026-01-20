@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../utils/JWTHandler.php';
+require_once '../includes/timezone_helper.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -108,7 +109,7 @@ if (!$input || !isset($input['nino_id'])) {
 }
 
 $ninoId = $input['nino_id'];
-$fecha = $input['fecha'] ?? date('Y-m-d'); // Usar fecha del cliente o fecha del servidor como fallback
+$fecha = $input['fecha'] ?? TimezoneHelper::getCurrentDate(); // Usar fecha del cliente o fecha del servidor como fallback
 $horaEntrada = $input['hora_entrada'] ?? null;
 $temperatura = $input['temperatura'] ?? null;
 $sePresentoEnfermo = isset($input['se_presento_enfermo']) ? (bool)$input['se_presento_enfermo'] : false;
@@ -120,8 +121,7 @@ $personaQueEntrega = $input['persona_que_entrega'] ?? null;
 
 // Validar formato de fecha si viene del cliente
 if (isset($input['fecha'])) {
-    $fechaValida = DateTime::createFromFormat('Y-m-d', $fecha);
-    if (!$fechaValida || $fechaValida->format('Y-m-d') !== $fecha) {
+    if (!TimezoneHelper::validateDateFormat($fecha)) {
         http_response_code(400);
         echo json_encode(['error' => 'Formato de fecha inválido. Use YYYY-MM-DD']);
         exit;

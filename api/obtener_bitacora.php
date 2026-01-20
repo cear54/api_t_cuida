@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 // Incluir archivos necesarios
 include_once '../config/database.php';
 include_once '../utils/JWTHandler.php';
+include_once '../includes/timezone_helper.php';
 
 // Verificar token JWT - Múltiples métodos para obtener el header Authorization
 $authHeader = null;
@@ -92,7 +93,7 @@ try {
 
 // Obtener parámetros de consulta
 $ninoId = $_GET['nino_id'] ?? null;
-$fecha = $_GET['fecha'] ?? date('Y-m-d'); // Por defecto hoy
+$fecha = $_GET['fecha'] ?? TimezoneHelper::getCurrentDate(); // Por defecto hoy
 
 if (!$ninoId) {
     http_response_code(400);
