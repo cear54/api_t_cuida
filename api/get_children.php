@@ -80,6 +80,9 @@ try {
     $database = new Database();
     $conn = $database->getConnection();
     
+    // Configurar zona horaria de MySQL para que coincida con PHP
+    $conn->exec("SET time_zone = '-06:00'"); // México (UTC-6)
+    
     // Validar suscripción de la empresa
     if ($empresa_id) {
         require_once '../middleware/subscription_validator.php';

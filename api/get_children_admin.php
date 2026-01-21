@@ -78,6 +78,9 @@ try {
 
     $database = new Database();
     $conn = $database->getConnection();
+    
+    // Configurar zona horaria de MySQL para que coincida con PHP
+    $conn->exec("SET time_zone = '-06:00'"); // México (UTC-6)
 
     // Obtener todos los niños de la empresa con información de asistencia
     $query = "
