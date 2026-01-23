@@ -3,6 +3,9 @@ require_once '../config/database.php';
 require_once '../utils/JWTHandler.php';
 require_once '../includes/timezone_helper.php';
 
+// Forzar timezone al inicio, antes de cualquier operación
+TimezoneHelper::setDefaultTimezone();
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
@@ -75,6 +78,15 @@ try {
 }
 
 $fecha = $_GET['fecha'] ?? TimezoneHelper::getCurrentDate();
+
+// DEBUG: Logs para identificar problema de fechas
+error_log("=== ASISTENCIA ESTADO DEBUG ===");
+error_log("PHP timezone: " . date_default_timezone_get());
+error_log("PHP date(): " . date('Y-m-d H:i:s'));
+error_log("TimezoneHelper::getCurrentDate(): " . TimezoneHelper::getCurrentDate());
+error_log("Fecha recibida del cliente: " . ($_GET['fecha'] ?? 'NULL'));
+error_log("Fecha final usada: " . $fecha);
+error_log("Empresa ID: " . $empresaId);
 
 try {
     $database = new Database();

@@ -3,6 +3,9 @@ require_once '../config/database.php';
 require_once '../utils/JWTHandler.php';
 require_once '../includes/timezone_helper.php';
 
+// Forzar timezone al inicio, antes de cualquier operación
+TimezoneHelper::setDefaultTimezone();
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -110,6 +113,17 @@ if (!$input || !isset($input['nino_id'])) {
 
 $ninoId = $input['nino_id'];
 $fecha = $input['fecha'] ?? TimezoneHelper::getCurrentDate(); // Usar fecha del cliente o fecha del servidor como fallback
+
+// DEBUG: Logs para identificar problema de fechas en registro
+error_log("=== ASISTENCIA ENTRADA DEBUG ===");
+error_log("PHP timezone: " . date_default_timezone_get());
+error_log("PHP date(): " . date('Y-m-d H:i:s'));
+error_log("TimezoneHelper::getCurrentDate(): " . TimezoneHelper::getCurrentDate());
+error_log("Fecha recibida del cliente: " . ($input['fecha'] ?? 'NULL'));
+error_log("Fecha final usada: " . $fecha);
+error_log("Niño ID: " . $ninoId);
+error_log("Empresa ID: " . $empresaId);
+
 $horaEntrada = $input['hora_entrada'] ?? null;
 $temperatura = $input['temperatura'] ?? null;
 $sePresentoEnfermo = isset($input['se_presento_enfermo']) ? (bool)$input['se_presento_enfermo'] : false;
@@ -188,9 +202,42 @@ try {
     $existingStmt->bindParam(':fecha', $fecha);
     $existingStmt->execute();
 
+    // DEBUG: Log del query de verificación
+    error_log("Query de verificación ejecutado:");
+    error_log("nino_id: $ninoId, empresa_id: $empresaId, fecha: $fecha");
+    error_log("Registros encontrados: " . $existingStmt->rowCount());
+
     if ($existingStmt->rowCount() > 0) {
+        error_log("ERROR: Ya existe registro - devolviendo error 400");
+        
+        // Obtener información del registro existente para debug
+        $debugQuery = "SELECT id, fecha, hora_entrada, created_at 
+                       FROM asistencias 
+                       WHERE nino_id = :nino_id 
+                       AND empresa_id = :empresa_id 
+                       AND DATE(fecha) = :fecha 
+                       ORDER BY created_at DESC LIMIT 1";
+        $debugStmt = $db->prepare($debugQuery);
+        $debugStmt->bindParam(':nino_id', $ninoId, PDO::PARAM_INT);
+        $debugStmt->bindParam(':empresa_id', $empresaId, PDO::PARAM_INT);
+        $debugStmt->bindParam(':fecha', $fecha);
+        $debugStmt->execute();
+        $existingRecord = $debugStmt->fetch();
+        
         http_response_code(400);
-        echo json_encode(['error' => 'Ya se registró una entrada para este niño en la fecha especificada']);
+        echo json_encode([
+            'error' => 'Ya se registró una entrada para este niño en la fecha especificada',
+            'debug_info' => [
+                'fecha_buscada' => $fecha,
+                'fecha_cliente' => $input['fecha'] ?? 'NULL',
+                'fecha_servidor' => TimezoneHelper::getCurrentDate(),
+                'php_timezone' => date_default_timezone_get(),
+                'php_datetime' => date('Y-m-d H:i:s'),
+                'registro_existente' => $existingRecord,
+                'nino_id' => $ninoId,
+                'empresa_id' => $empresaId
+            ]
+        ]);
         exit;
     }
 

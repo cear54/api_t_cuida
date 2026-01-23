@@ -1,6 +1,10 @@
 <?php
 require_once '../config/database.php';
 require_once '../utils/JWTHandler.php';
+require_once '../includes/timezone_helper.php';
+
+// Forzar timezone al inicio, antes de cualquier operación
+TimezoneHelper::setDefaultTimezone();
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -79,8 +83,20 @@ try {
     $database = new Database();
     $conn = $database->getConnection();
     
+    // DEBUG: Logs para identificar problema de fechas
+    error_log("=== GET_CHILDREN_ADMIN DEBUG ===");
+    error_log("PHP timezone: " . date_default_timezone_get());
+    error_log("PHP date(): " . date('Y-m-d H:i:s'));
+    error_log("TimezoneHelper::getCurrentDate(): " . TimezoneHelper::getCurrentDate());
+    error_log("Empresa ID: " . $empresa_id);
+    
     // Configurar zona horaria de MySQL para que coincida con PHP
     $conn->exec("SET time_zone = '-06:00'"); // México (UTC-6)
+
+    // Obtener fecha actual usando PHP (con timezone correcto) en lugar de MySQL
+    $fechaHoy = TimezoneHelper::getCurrentDate();
+    
+    error_log("GET_CHILDREN_ADMIN: Usando fecha PHP: $fechaHoy para comparaciones");
 
     // Obtener todos los niños de la empresa con información de asistencia
     $query = "
@@ -124,22 +140,25 @@ try {
         LEFT JOIN salones s ON n.salon_id = s.id 
         LEFT JOIN asistencias a ON n.id = a.nino_id 
             AND a.empresa_id = ? 
-            AND DATE(a.fecha) = CURDATE()
+            AND DATE(a.fecha) = ?
         LEFT JOIN salidas sal ON n.id = sal.nino_id 
             AND sal.empresa_id = ? 
-            AND sal.fecha = CURDATE()
+            AND sal.fecha = ?
         LEFT JOIN bitacoras b ON n.id = b.nino_id 
             AND b.empresa_id = ? 
-            AND b.fecha = CURDATE()
+            AND b.fecha = ?
         WHERE n.empresa_id = ? AND n.activo = 1
         ORDER BY n.nombre, n.apellido_paterno
     ";
 
     $stmt = $conn->prepare($query);
     $stmt->bindParam(1, $empresa_id, PDO::PARAM_STR);
-    $stmt->bindParam(2, $empresa_id, PDO::PARAM_STR);
+    $stmt->bindParam(2, $fechaHoy, PDO::PARAM_STR);
     $stmt->bindParam(3, $empresa_id, PDO::PARAM_STR);
-    $stmt->bindParam(4, $empresa_id, PDO::PARAM_STR);
+    $stmt->bindParam(4, $fechaHoy, PDO::PARAM_STR);
+    $stmt->bindParam(5, $empresa_id, PDO::PARAM_STR);
+    $stmt->bindParam(6, $fechaHoy, PDO::PARAM_STR);
+    $stmt->bindParam(7, $empresa_id, PDO::PARAM_STR);
     $stmt->execute();
     $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

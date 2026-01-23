@@ -3,6 +3,9 @@ require_once '../config/database.php';
 require_once '../utils/JWTHandler.php';
 require_once '../includes/timezone_helper.php';
 
+// Forzar timezone al inicio, antes de cualquier operación
+TimezoneHelper::setDefaultTimezone();
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
