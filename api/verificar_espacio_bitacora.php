@@ -83,7 +83,7 @@ try {
     if (!$bitacora) {
         echo json_encode([
             'success' => false,
-            'error' => 'No hay registro de bitácora para esta fecha. Debe existir una bitácora del día para agregar imágenes.'
+            'error' => 'Debe ingresar por lo menos el desayuno en bitácora para poder agregar las imágenes de hoy.'
         ]);
         exit();
     }

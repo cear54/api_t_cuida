@@ -228,9 +228,6 @@ try {
                             problema_salud = :problema_salud,
                             descripcion_salud = :descripcion_salud,
                             observaciones = :observaciones,
-                            imagen1 = :imagen1,
-                            imagen2 = :imagen2,
-                            imagen3 = :imagen3,
                             educadora_id = :educadora_id,
                             updated_at = NOW()
                         WHERE id = :bitacora_id";
@@ -254,9 +251,6 @@ try {
         $updateStmt->bindParam(':problema_salud', $problemaSalud, PDO::PARAM_BOOL);
         $updateStmt->bindParam(':descripcion_salud', $descripcionSalud);
         $updateStmt->bindParam(':observaciones', $observaciones);
-        $updateStmt->bindParam(':imagen1', $imagen1);
-        $updateStmt->bindParam(':imagen2', $imagen2);
-        $updateStmt->bindParam(':imagen3', $imagen3);
         $updateStmt->bindParam(':educadora_id', $personalId, PDO::PARAM_INT);
         $updateStmt->bindParam(':bitacora_id', $bitacoraId, PDO::PARAM_INT);
 
