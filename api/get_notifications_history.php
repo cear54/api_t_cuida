@@ -77,8 +77,8 @@ try {
         $params[':nino_id'] = $ninoId;
     }
     
-    // Consulta para contar total
-    $countQuery = "SELECT COUNT(*) as total " . $baseQuery;
+    // Consulta para contar total de mensajes únicos
+    $countQuery = "SELECT COUNT(DISTINCT n.mensaje_id) as total " . $baseQuery;
     $countStmt = $db->prepare($countQuery);
     
     foreach ($params as $key => $value) {
@@ -88,20 +88,29 @@ try {
     $countStmt->execute();
     $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    // Consulta principal con datos - Solo las columnas requeridas
+    // Consulta principal con datos - Agrupada por mensaje_id para evitar duplicados
     $dataQuery = "SELECT 
-                    n.titulo,
-                    n.mensaje,
-                    n.prioridad,
-                    n.fecha_envio
+                    n.mensaje_id,
+                    MAX(n.titulo) as titulo,
+                    MAX(n.mensaje) as mensaje,
+                    MAX(n.tipo) as tipo,
+                    MAX(n.estado) as estado,
+                    MAX(n.prioridad) as prioridad,
+                    MIN(n.fecha_envio) as fecha_envio,
+                    COUNT(DISTINCT n.usuario_id) as total_destinatarios
                   " . $baseQuery . "
-                  ORDER BY n.fecha_envio DESC";
+                  GROUP BY n.mensaje_id
+                  ORDER BY fecha_envio DESC
+                  LIMIT :limite OFFSET :offset";
     
     $dataStmt = $db->prepare($dataQuery);
     
     foreach ($params as $key => $value) {
         $dataStmt->bindValue($key, $value);
     }
+    
+    $dataStmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+    $dataStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     
     $dataStmt->execute();
     $notificaciones = $dataStmt->fetchAll(PDO::FETCH_ASSOC);

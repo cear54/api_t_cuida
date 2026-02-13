@@ -59,8 +59,19 @@ try {
     $fecha_desde = isset($_GET['fecha_desde']) ? $_GET['fecha_desde'] : null;
     $fecha_hasta = isset($_GET['fecha_hasta']) ? $_GET['fecha_hasta'] : null;
     
-    // Construir consulta base
-    $baseQuery = "SELECT n.*, u.nombre_usuario as usuario_nombre, u.email_usuario as usuario_email 
+    // Construir consulta base - AGRUPADA por mensaje_id para evitar duplicados visuales
+    $baseQuery = "SELECT n.mensaje_id,
+                         MAX(n.id) as id,
+                         MAX(n.titulo) as titulo, 
+                         MAX(n.mensaje) as mensaje, 
+                         MAX(n.tipo) as tipo,
+                         MAX(n.imagen_url) as imagen_url,
+                         MAX(n.estado) as estado,
+                         MIN(n.fecha_envio) as fecha_envio,
+                         MAX(n.fecha_lectura) as fecha_lectura,
+                         MAX(n.datos_adicionales) as datos_adicionales,
+                         COUNT(DISTINCT n.usuario_id) as total_destinatarios,
+                         GROUP_CONCAT(DISTINCT u.nombre_usuario SEPARATOR ', ') as usuarios_nombres
                   FROM notificaciones n 
                   LEFT JOIN usuarios_app u ON n.usuario_id = u.id";
     
@@ -94,14 +105,17 @@ try {
         $whereClause = " WHERE " . implode(" AND ", $conditions);
     }
     
-    // Consulta para contar total
-    $countQuery = "SELECT COUNT(*) as total FROM notificaciones n" . $whereClause;
+    // GROUP BY para agrupar por mensaje_id
+    $groupByClause = " GROUP BY n.mensaje_id";
+    
+    // Consulta para contar total (de mensajes únicos, no de registros)
+    $countQuery = "SELECT COUNT(DISTINCT n.mensaje_id) as total FROM notificaciones n" . $whereClause;
     $countStmt = $db->prepare($countQuery);
     $countStmt->execute($params);
     $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    // Consulta principal con paginación (LIMIT y OFFSET no se pueden bindear como parámetros)
-    $mainQuery = $baseQuery . $whereClause . " ORDER BY n.fecha_envio DESC LIMIT $limit OFFSET $offset";
+    // Consulta principal con paginación y agrupación por mensaje_id
+    $mainQuery = $baseQuery . $whereClause . $groupByClause . " ORDER BY fecha_envio DESC LIMIT $limit OFFSET $offset";
     
     $stmt = $db->prepare($mainQuery);
     $stmt->execute($params);
