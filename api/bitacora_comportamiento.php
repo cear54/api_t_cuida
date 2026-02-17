@@ -438,6 +438,9 @@ try {
                             imagen1,
                             imagen2,
                             imagen3,
+                            comentarios_familia,
+                            comentarios_familia_user_id,
+                            comentarios_familia_fecha,
                             educadora_id, 
                             created_at
                         ) VALUES (
@@ -465,6 +468,9 @@ try {
                             :imagen1,
                             :imagen2,
                             :imagen3,
+                            :comentarios_familia,
+                            :comentarios_familia_user_id,
+                            :comentarios_familia_fecha,
                             :educadora_id, 
                             NOW()
                         )";
