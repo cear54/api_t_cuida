@@ -185,6 +185,11 @@ try {
                     'imagen2' => $bitacora['imagen2'],
                     'imagen3' => $bitacora['imagen3']
                 ],
+                'comentarios_familia' => [
+                    'comentarios' => $bitacora['comentarios_familia'],
+                    'user_id' => $bitacora['comentarios_familia_user_id'],
+                    'fecha' => $bitacora['comentarios_familia_fecha']
+                ],
                 'educadora' => $bitacora['educadora_nombre'] ? 
                     $bitacora['educadora_nombre'] . ' ' . $bitacora['educadora_apellido_paterno'] : null,
                 'created_at' => $bitacora['created_at'],
