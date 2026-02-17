@@ -31,8 +31,8 @@ if (empty($authHeader)) {
 $token = str_replace('Bearer ', '', $authHeader);
 
 try {
-    $decoded = JWTHandler::validateToken($token);
-    $userId = $decoded['id'];
+    $decoded = JWTHandler::verifyToken($token);
+    $userId = $decoded['user_id'];
     
     // Obtener datos del POST
     $data = json_decode(file_get_contents("php://input"));
@@ -54,7 +54,7 @@ try {
                   SET estado = 'leida', 
                       fecha_lectura = NOW()
                   WHERE id = :notification_id 
-                  AND (para_user_id = :user_id OR para_user_id IS NULL)";
+                  AND usuario_id = :user_id";
         
         $stmt = $db->prepare($query);
         $stmt->bindParam(":notification_id", $notificationId);
@@ -75,6 +75,36 @@ try {
             throw new Exception("Error actualizando notificación");
         }
         
+    } elseif (isset($data->mensaje_id)) {
+        // Marcar notificación por mensaje_id (marca todos los registros de ese mensaje para el usuario)
+        $mensajeId = $data->mensaje_id;
+        
+        $query = "UPDATE notificaciones 
+                  SET estado = 'leida', 
+                      fecha_lectura = NOW()
+                  WHERE mensaje_id = :mensaje_id 
+                  AND usuario_id = :user_id
+                  AND estado != 'leida'";
+        
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(":mensaje_id", $mensajeId);
+        $stmt->bindParam(":user_id", $userId);
+        
+        if ($stmt->execute()) {
+            $affectedRows = $stmt->rowCount();
+            if ($affectedRows > 0) {
+                sendResponse(true, "Notificación(es) marcada(s) como leída(s)", [
+                    "mensaje_id" => $mensajeId,
+                    "affected_rows" => $affectedRows,
+                    "action" => "mark_read_by_mensaje_id"
+                ]);
+            } else {
+                sendResponse(false, "Notificación no encontrada o ya estaba leída", null, 404);
+            }
+        } else {
+            throw new Exception("Error actualizando notificación por mensaje_id");
+        }
+        
     } elseif (isset($data->firebase_message_id)) {
         // Marcar notificación por Firebase Message ID
         $firebaseMessageId = $data->firebase_message_id;
@@ -83,7 +113,7 @@ try {
                   SET estado = 'leida', 
                       fecha_lectura = NOW()
                   WHERE firebase_message_id = :firebase_id 
-                  AND (para_user_id = :user_id OR para_user_id IS NULL)";
+                  AND usuario_id = :user_id";
         
         $stmt = $db->prepare($query);
         $stmt->bindParam(":firebase_id", $firebaseMessageId);
@@ -109,7 +139,7 @@ try {
         $query = "UPDATE notificaciones 
                   SET estado = 'leida', 
                       fecha_lectura = COALESCE(fecha_lectura, NOW())
-                  WHERE (para_user_id = :user_id OR para_user_id IS NULL)
+                  WHERE usuario_id = :user_id
                   AND estado != 'leida'";
         
         $stmt = $db->prepare($query);
@@ -132,7 +162,7 @@ try {
         $query = "UPDATE notificaciones 
                   SET estado = 'leida', 
                       fecha_lectura = COALESCE(fecha_lectura, NOW())
-                  WHERE (para_user_id = :user_id OR para_user_id IS NULL)
+                  WHERE usuario_id = :user_id
                   AND tipo = :tipo
                   AND estado != 'leida'";
         
@@ -152,7 +182,7 @@ try {
         }
         
     } else {
-        sendResponse(false, "Parámetros inválidos. Envía 'notification_id', 'firebase_message_id', 'mark_all_as_read' o 'tipo'", null, 400);
+        sendResponse(false, "Parámetros inválidos. Envía 'notification_id', 'mensaje_id', 'firebase_message_id', 'mark_all_as_read' o 'tipo'", null, 400);
     }
     
 } catch (Exception $e) {
