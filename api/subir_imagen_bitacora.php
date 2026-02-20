@@ -27,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Incluir archivos necesarios
 include_once '../config/database.php';
 include_once '../utils/JWTHandler.php';
+include_once '../includes/timezone_helper.php';
 
 // Verificar token JWT - Múltiples métodos para obtener el header Authorization
 $authHeader = null;
@@ -121,7 +122,7 @@ if (!isset($_FILES['imagen']) || $_FILES['imagen']['error'] !== UPLOAD_ERR_OK) {
 // Obtener información adicional
 $ninoId = $_POST['nino_id'] ?? null;
 $empresaIdPost = $_POST['empresa_id'] ?? null;
-$fechaBitacora = $_POST['fecha'] ?? date('Y-m-d'); // Fecha de la bitácora
+$fechaBitacora = $_POST['fecha'] ?? TimezoneHelper::getCurrentDate(); // Fecha de la bitácora
 
 error_log("DEBUG: Received data - nino_id: $ninoId, empresa_id: $empresaIdPost, fecha: $fechaBitacora");
 
@@ -140,8 +141,7 @@ if ($empresaIdPost && $empresaIdPost != $empresaId) {
 }
 
 // Validar formato de fecha
-$fechaValida = DateTime::createFromFormat('Y-m-d', $fechaBitacora);
-if (!$fechaValida || $fechaValida->format('Y-m-d') !== $fechaBitacora) {
+if (!TimezoneHelper::validateDateFormat($fechaBitacora)) {
     http_response_code(400);
     echo json_encode(['error' => 'Formato de fecha inválido. Use YYYY-MM-DD']);
     exit;

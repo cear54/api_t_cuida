@@ -32,8 +32,11 @@ $token = str_replace('Bearer ', '', $authHeader);
 
 try {
     $decoded = JWTHandler::validateToken($token);
-    $userId = $decoded['id'];
-    $empresaId = $decoded['empresa_id'] ?? null;
+    if (!$decoded) {
+        sendResponse(false, "Token inválido o expirado", null, 401);
+    }
+    $userId = $decoded->user_id;
+    $empresaId = $decoded->empresa_id ?? null;
     
     // Obtener datos del POST
     $data = json_decode(file_get_contents("php://input"));
@@ -57,16 +60,17 @@ try {
     $checkStmt->execute();
     
     if ($checkStmt->rowCount() > 0) {
-        // El mensaje ya existe, actualizar estado si es necesario
+        // El mensaje ya existe, actualizar fecha_entrega
         $updateQuery = "UPDATE notificaciones 
                        SET estado = :estado,
                            fecha_entrega = COALESCE(fecha_entrega, NOW()),
-                           fecha_lectura = CASE WHEN :estado = 'leida' THEN NOW() ELSE fecha_lectura END
+                           fecha_lectura = CASE WHEN :estado2 = 'leido' THEN NOW() ELSE fecha_lectura END
                        WHERE firebase_message_id = :firebase_id 
-                       AND para_user_id = :user_id";
+                       AND usuario_id = :user_id";
         
         $updateStmt = $db->prepare($updateQuery);
         $updateStmt->bindParam(":estado", $data->estado);
+        $updateStmt->bindParam(":estado2", $data->estado);
         $updateStmt->bindParam(":firebase_id", $data->firebase_message_id);
         $updateStmt->bindParam(":user_id", $userId);
         
@@ -82,40 +86,38 @@ try {
     } else {
         // El mensaje no existe, crear nuevo registro
         $insertQuery = "INSERT INTO notificaciones 
-                       (titulo, mensaje, tipo, enviado_por, para_user_id, empresa_id, 
-                        nino_id, datos_extra, estado, firebase_message_id, fecha_entrega,
-                        dispositivo_tipo, version_app)
+                       (mensaje_id, titulo, mensaje, tipo, usuario_id, empresa_id, 
+                        nino_id, datos_adicionales, estado, firebase_message_id, fecha_entrega,
+                        dispositivo_tipo)
                        VALUES 
-                       (:titulo, :mensaje, :tipo, :enviado_por, :para_user_id, :empresa_id,
-                        :nino_id, :datos_extra, :estado, :firebase_id, NOW(),
-                        :dispositivo_tipo, :version_app)";
+                       (:mensaje_id, :titulo, :mensaje, :tipo, :usuario_id, :empresa_id,
+                        :nino_id, :datos_adicionales, :estado, :firebase_id, NOW(),
+                        :dispositivo_tipo)";
         
         $insertStmt = $db->prepare($insertQuery);
         
         // Preparar datos
-        $titulo = $data->titulo ?? 'Notificación';
-        $mensaje = $data->mensaje ?? '';
-        $tipo = $data->tipo ?? 'general';
-        $enviadoPor = $data->enviado_por ?? $userId; // Por defecto, el mismo usuario
-        $ninoId = $data->nino_id ?? null;
-        $datosExtra = isset($data->datos_extra) ? json_encode($data->datos_extra) : null;
-        $estado = $data->estado ?? 'entregada';
+        $mensajeId   = 'fb_' . ($data->firebase_message_id ?? uniqid());
+        $titulo      = $data->titulo ?? 'Notificación';
+        $mensaje     = $data->mensaje ?? '';
+        $tipo        = $data->tipo ?? 'general';
+        $ninoId      = $data->nino_id ?? null;
+        $datosAdicionales = isset($data->datos_extra) ? json_encode($data->datos_extra) : null;
+        $estado      = $data->estado ?? 'entregado';
         $dispositivoTipo = $data->dispositivo_tipo ?? 'android';
-        $versionApp = $data->version_app ?? '1.0.0';
         
         // Bind parameters
+        $insertStmt->bindParam(":mensaje_id", $mensajeId);
         $insertStmt->bindParam(":titulo", $titulo);
         $insertStmt->bindParam(":mensaje", $mensaje);
         $insertStmt->bindParam(":tipo", $tipo);
-        $insertStmt->bindParam(":enviado_por", $enviadoPor);
-        $insertStmt->bindParam(":para_user_id", $userId);
+        $insertStmt->bindParam(":usuario_id", $userId);
         $insertStmt->bindParam(":empresa_id", $empresaId);
         $insertStmt->bindParam(":nino_id", $ninoId);
-        $insertStmt->bindParam(":datos_extra", $datosExtra);
+        $insertStmt->bindParam(":datos_adicionales", $datosAdicionales);
         $insertStmt->bindParam(":estado", $estado);
         $insertStmt->bindParam(":firebase_id", $data->firebase_message_id);
         $insertStmt->bindParam(":dispositivo_tipo", $dispositivoTipo);
-        $insertStmt->bindParam(":version_app", $versionApp);
         
         if ($insertStmt->execute()) {
             $notificationId = $db->lastInsertId();

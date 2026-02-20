@@ -107,7 +107,7 @@ try {
 
     // REQUERIR que exista una fila de bitácora para esa fecha
     if (!$bitacora) {
-        throw new Exception('No hay registro de bitácora para esta fecha. Debe existir una bitácora del día para agregar imágenes.');
+        throw new Exception('Debe ingresar por lo menos el desayuno en bitácora para poder agregar las imágenes de hoy.');
     }
 
     // Determinar en qué columna guardar la imagen (solo en fila existente)

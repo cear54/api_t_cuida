@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 // Incluir archivos necesarios
 include_once '../config/database.php';
 include_once '../utils/JWTHandler.php';
+include_once '../includes/timezone_helper.php';
 
 // Verificar token JWT - Múltiples métodos para obtener el header Authorization
 $authHeader = null;
@@ -92,7 +93,7 @@ try {
 
 // Obtener parámetros de consulta
 $ninoId = $_GET['nino_id'] ?? null;
-$fecha = $_GET['fecha'] ?? date('Y-m-d'); // Por defecto hoy
+$fecha = $_GET['fecha'] ?? TimezoneHelper::getCurrentDate(); // Por defecto hoy
 
 if (!$ninoId) {
     http_response_code(400);
@@ -183,6 +184,11 @@ try {
                     'imagen1' => $bitacora['imagen1'],
                     'imagen2' => $bitacora['imagen2'],
                     'imagen3' => $bitacora['imagen3']
+                ],
+                'comentarios_familia' => [
+                    'comentarios' => $bitacora['comentarios_familia'],
+                    'user_id' => $bitacora['comentarios_familia_user_id'],
+                    'fecha' => $bitacora['comentarios_familia_fecha']
                 ],
                 'educadora' => $bitacora['educadora_nombre'] ? 
                     $bitacora['educadora_nombre'] . ' ' . $bitacora['educadora_apellido_paterno'] : null,

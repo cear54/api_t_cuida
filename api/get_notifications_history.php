@@ -53,12 +53,14 @@ try {
     
     $offset = ($pagina - 1) * $limite;
     
-    // Construir consulta base - simplificada para solo tabla notificaciones
+    // Construir consulta base - filtrada por usuario para obtener sus propios registros
     $baseQuery = "FROM notificaciones n 
-                  WHERE n.empresa_id = :empresa_id";
+                  WHERE n.empresa_id = :empresa_id
+                  AND n.usuario_id = :usuario_id";
     
     $params = [
-        ':empresa_id' => $empresaId
+        ':empresa_id' => $empresaId,
+        ':usuario_id' => $userId
     ];
     
     // Agregar filtros opcionales
@@ -77,8 +79,8 @@ try {
         $params[':nino_id'] = $ninoId;
     }
     
-    // Consulta para contar total
-    $countQuery = "SELECT COUNT(*) as total " . $baseQuery;
+    // Consulta para contar total de mensajes únicos
+    $countQuery = "SELECT COUNT(DISTINCT n.mensaje_id) as total " . $baseQuery;
     $countStmt = $db->prepare($countQuery);
     
     foreach ($params as $key => $value) {
@@ -88,14 +90,25 @@ try {
     $countStmt->execute();
     $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    // Consulta principal con datos - Solo las columnas requeridas
+    // Consulta principal con datos - Agrupada por mensaje_id para evitar duplicados
     $dataQuery = "SELECT 
-                    n.titulo,
-                    n.mensaje,
-                    n.prioridad,
-                    n.fecha_envio
+                    MIN(n.id) as id,
+                    n.mensaje_id,
+                    MAX(n.titulo) as titulo,
+                    MAX(n.mensaje) as mensaje,
+                    MAX(n.tipo) as tipo,
+                    MAX(n.estado) as estado,
+                    MAX(n.prioridad) as prioridad,
+                    MIN(n.fecha_envio) as fecha_envio,
+                    MAX(n.fecha_entrega) as fecha_entrega,
+                    MAX(n.fecha_lectura) as fecha_lectura,
+                    COUNT(DISTINCT n.usuario_id) as total_destinatarios,
+                    MAX(CASE WHEN n.estado = 'leido' THEN 1 ELSE 0 END) as es_leida,
+                    MAX(CASE WHEN n.fecha_entrega IS NULL THEN 1 ELSE 0 END) as es_nueva
                   " . $baseQuery . "
-                  ORDER BY n.fecha_envio DESC";
+                  GROUP BY n.mensaje_id
+                  ORDER BY fecha_envio DESC
+                  LIMIT :limite OFFSET :offset";
     
     $dataStmt = $db->prepare($dataQuery);
     
@@ -103,22 +116,35 @@ try {
         $dataStmt->bindValue($key, $value);
     }
     
+    $dataStmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+    $dataStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    
     $dataStmt->execute();
     $notificaciones = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Los datos ya vienen listos de la consulta SQL simplificada
     // Solo las 4 columnas: titulo, mensaje, prioridad, fecha_envio
     
-    // Estadísticas simplificadas
-    $statsQuery = "SELECT COUNT(*) as total_general FROM notificaciones WHERE empresa_id = :empresa_id";
+    // Estadísticas reales por estado del usuario actual
+    $statsQuery = "SELECT 
+        COUNT(*) as total_general,
+        SUM(CASE WHEN estado = 'leida' THEN 1 ELSE 0 END) as leidas,
+        SUM(CASE WHEN estado != 'leida' THEN 1 ELSE 0 END) as no_leidas,
+        SUM(CASE WHEN fecha_entrega IS NOT NULL THEN 1 ELSE 0 END) as entregadas,
+        SUM(CASE WHEN fecha_entrega IS NULL THEN 1 ELSE 0 END) as pendientes_entrega
+        FROM notificaciones WHERE empresa_id = :empresa_id AND usuario_id = :usuario_id";
     $statsStmt = $db->prepare($statsQuery);
     $statsStmt->bindParam(':empresa_id', $empresaId);
+    $statsStmt->bindParam(':usuario_id', $userId);
     $statsStmt->execute();
+    $statsRow = $statsStmt->fetch(PDO::FETCH_ASSOC);
     $estadisticas = [
-        'total_general' => $statsStmt->fetch(PDO::FETCH_ASSOC)['total_general'],
-        'leidas' => 0,
-        'no_leidas' => 0,
-        'pendientes_accion' => 0
+        'total_general'      => (int)$statsRow['total_general'],
+        'leidas'             => (int)$statsRow['leidas'],
+        'no_leidas'          => (int)$statsRow['no_leidas'],
+        'entregadas'         => (int)$statsRow['entregadas'],
+        'pendientes_entrega' => (int)$statsRow['pendientes_entrega'],
+        'pendientes_accion'  => 0
     ];
     
     // Respuesta exitosa

@@ -110,7 +110,7 @@ try {
                 "tipo" => $usuarioAEliminar['tipo_usuario']
             ],
             "eliminado_por" => $currentUserId,
-            "fecha_eliminacion" => date('Y-m-d H:i:s')
+            "fecha_eliminacion" => TimezoneHelper::getCurrentTimestamp()
         ]);
         
     } catch (Exception $e) {

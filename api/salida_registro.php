@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Verificar token JWT
 require_once __DIR__ . '/../utils/JWTHandler.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/timezone_helper.php';
 
 $headers = getallheaders();
 $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
@@ -84,7 +85,7 @@ foreach ($requiredFields as $field) {
 }
 
 $ninoId = (int)$data['nino_id'];
-$fecha = $data['fecha'] ?? date('Y-m-d'); // Usar fecha del cliente o fecha del servidor como fallback
+$fecha = $data['fecha'] ?? TimezoneHelper::getCurrentDate(); // Usar fecha del cliente o fecha del servidor como fallback
 $horaSalida = trim($data['hora_salida']);
 $quienRecoge = trim($data['quien_recoge']);
 $entregadoLimpio = (bool)$data['entregado_limpio'];
@@ -92,8 +93,7 @@ $entregadoConPertenencias = (bool)$data['entregado_con_pertenencias'];
 
 // Validar formato de fecha si viene del cliente
 if (isset($data['fecha'])) {
-    $fechaValida = DateTime::createFromFormat('Y-m-d', $fecha);
-    if (!$fechaValida || $fechaValida->format('Y-m-d') !== $fecha) {
+    if (!TimezoneHelper::validateDateFormat($fecha)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Formato de fecha inválido. Use YYYY-MM-DD']);
         exit;
@@ -214,19 +214,22 @@ try {
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
     
-    $result = $stmt->execute([
+    $insertData = [
         $ninoId,
         $empresaId,
         $fecha,
         $horaSalida,
         $quienRecoge,
-        $entregadoLimpio ? 1 : 0,
-        $entregadoConPertenencias ? 1 : 0
-    ]);
+        (int)$entregadoLimpio,
+        (int)$entregadoConPertenencias
+    ];
+    
+    $result = $stmt->execute($insertData);
     
     if ($result) {
         $salidaId = $pdo->lastInsertId();
         
+        // Respuesta exitosa
         echo json_encode([
             'success' => true,
             'message' => 'Salida registrada exitosamente',
@@ -246,11 +249,9 @@ try {
     }
     
 } catch (PDOException $e) {
-    error_log("Error de base de datos en salida_registro.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Error de base de datos: ' . $e->getMessage()]);
 } catch (Exception $e) {
-    error_log("Error en salida_registro.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Error interno del servidor: ' . $e->getMessage()]);
 }

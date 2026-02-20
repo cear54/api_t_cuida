@@ -119,6 +119,34 @@ try {
         }
     }
     
+    // DEDUPLICAR TOKENS - Evita enviar múltiples notificaciones al mismo dispositivo
+    // Si varios usuarios tienen el mismo token_app (mismo dispositivo), solo se envía una vez
+    if (!empty($recipients)) {
+        $uniqueTokens = [];
+        $uniqueRecipientsInfo = [];
+        $seenTokens = [];
+        
+        foreach ($recipientsInfo as $recipient) {
+            $token = $recipient['token'];
+            if (!isset($seenTokens[$token])) {
+                $seenTokens[$token] = true;
+                $uniqueTokens[] = $token;
+                $uniqueRecipientsInfo[] = $recipient;
+            }
+        }
+        
+        // Actualizar con arrays deduplicados
+        $recipients = $uniqueTokens;
+        $recipientsInfo = $uniqueRecipientsInfo;
+        
+        // Log para debugging (opcional)
+        $totalOriginal = count($seenTokens);
+        $totalDeduplicado = count($recipients);
+        if ($totalOriginal !== $totalDeduplicado) {
+            error_log("T-Cuida: Tokens deduplicados - Original: $totalOriginal, Después: $totalDeduplicado");
+        }
+    }
+    
     if (empty($recipients)) {
         echo json_encode([
             'success' => false,

@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/timezone_helper.php';
 
 try {
     // Crear conexión a la base de datos
@@ -48,11 +49,14 @@ try {
                 FROM eventos 
                 WHERE empresa_id = :empresa_id 
                 AND activo = 1
-                AND DATE(fecha) >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+                AND DATE(fecha) >= :fecha_minima
                 ORDER BY fecha ASC, hora_inicio ASC";
+        // Calcular fecha mínima usando PHP para consistencia
+        $fechaMinima = date('Y-m-d', strtotime('-1 day'));
         
         $stmt = $db->prepare($sql);
         $stmt->bindParam(':empresa_id', $empresa_id, PDO::PARAM_STR);
+        $stmt->bindParam(':fecha_minima', $fechaMinima, PDO::PARAM_STR);
         $stmt->execute();
         
         $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
