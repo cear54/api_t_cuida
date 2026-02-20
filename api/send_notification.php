@@ -82,13 +82,19 @@ try {
     } elseif (isset($data->tipo_usuario)) {
         // Enviar según tipo de usuario
         if ($data->tipo_usuario === 'educador') {
-            // EDUCADOR = todos los usuarios MENOS familia
-            $query = "SELECT id, token_app FROM usuarios_app WHERE tipo_usuario != 'familia' AND token_app IS NOT NULL AND activo = 1";
+            // EDUCADOR = educadores y administradores
+            $query = "SELECT id, token_app FROM usuarios_app WHERE tipo_usuario IN ('educador', 'administrador') AND token_app IS NOT NULL AND activo = 1";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } elseif ($data->tipo_usuario === 'academico') {
+            // ACADEMICO incluye también administrador y academico_b (misma jerarquía)
+            $query = "SELECT id, token_app FROM usuarios_app WHERE tipo_usuario IN ('academico', 'academico_b', 'administrador') AND token_app IS NOT NULL AND activo = 1";
             $stmt = $db->prepare($query);
             $stmt->execute();
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } else {
-            // Otros tipos mantienen lógica original
+            // Otros tipos: familia, administrador, academico_b — lógica exacta
             $query = "SELECT id, token_app FROM usuarios_app WHERE tipo_usuario = :tipo_usuario AND token_app IS NOT NULL AND activo = 1";
             $stmt = $db->prepare($query);
             $stmt->bindParam(":tipo_usuario", $data->tipo_usuario);
@@ -227,6 +233,13 @@ try {
                 break;
             case 'educador':
                 $tipo_mensaje = 'educadores';
+                break;
+            case 'academico':
+            case 'academico_b':
+                $tipo_mensaje = 'academico';
+                break;
+            case 'administrador':
+                $tipo_mensaje = 'administrador';
                 break;
             default:
                 $tipo_mensaje = 'general';
