@@ -45,10 +45,11 @@ try {
     
     // Contar mensajes únicos NO LEÍDOS para este usuario
     // Usando COUNT(DISTINCT mensaje_id) para ser consistente con el historial agrupado
+    // Se considera no leído: estado = 'enviado' o 'entregado' (cualquier cosa que no sea 'leido')
     $query = "SELECT COUNT(DISTINCT n.mensaje_id) as unread_count
               FROM notificaciones n
               WHERE n.usuario_id = :user_id
-              AND n.estado = 'enviado'";
+              AND n.estado != 'leido'";
     
     // Si hay empresa_id, filtrar también por empresa
     if ($empresaId) {
@@ -71,7 +72,7 @@ try {
     $lastUnreadQuery = "SELECT MAX(fecha_envio) as last_unread_date
                         FROM notificaciones
                         WHERE usuario_id = :user_id
-                        AND estado = 'enviado'";
+                        AND estado != 'leido'";
     
     if ($empresaId) {
         $lastUnreadQuery .= " AND empresa_id = :empresa_id";
