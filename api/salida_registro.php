@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 require_once __DIR__ . '/../utils/JWTHandler.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/timezone_helper.php';
+require_once __DIR__ . '/../config/FirebaseAPIv1.php';
 
 $headers = getallheaders();
 $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
@@ -228,7 +229,51 @@ try {
     
     if ($result) {
         $salidaId = $pdo->lastInsertId();
-        
+
+        // -------------------------------------------------------
+        // NOTIFICACIÓN PUSH AL FAMILIAR DEL MENOR
+        // -------------------------------------------------------
+        try {
+            // Buscar usuarios de tipo 'familia' vinculados al niño con token válido
+            $stmtFamilia = $pdo->prepare("
+                SELECT id, token_app
+                FROM usuarios_app
+                WHERE nino_id = ? AND tipo_usuario = 'familia'
+                  AND token_app IS NOT NULL AND activo = 1
+            ");
+            $stmtFamilia->execute([$ninoId]);
+            $familiares = $stmtFamilia->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($familiares)) {
+                $tokens   = array_column($familiares, 'token_app');
+                $tokens   = array_unique($tokens); // evitar duplicados
+
+                $nombreNino = trim($nino['nombre_completo']);
+                $tituloNotif = 'Salida registrada';
+                $cuerpoNotif = "$nombreNino ha salido a las $horaSalida. Recogido por: $quienRecoge.";
+
+                $datosExtra = [
+                    'tipo'     => 'salida',
+                    'nino_id'  => (string)$ninoId,
+                    'fecha'    => $fecha,
+                    'timestamp' => (string)time()
+                ];
+
+                $firebase = new FirebaseAPIv1();
+                $firebase->sendMulticast(
+                    array_values($tokens),
+                    $tituloNotif,
+                    $cuerpoNotif,
+                    $datosExtra
+                );
+            }
+            // Si no hay familiares con token, se omite silenciosamente
+        } catch (Exception $eNotif) {
+            // Si la notificación falla, la salida ya está guardada; solo se registra el error
+            error_log('T-Cuida salida_registro: Error al enviar notificación - ' . $eNotif->getMessage());
+        }
+        // -------------------------------------------------------
+
         // Respuesta exitosa
         echo json_encode([
             'success' => true,
