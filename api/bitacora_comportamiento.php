@@ -386,6 +386,66 @@ try {
 
         if ($updateStmt->execute()) {
             error_log('[bitacora_comportamiento.php] Bitácora actualizada exitosamente. ID: ' . $bitacoraId);
+            
+            // Si se agregaron comentarios de familia, notificar al personal del salón
+            if ($comentariosFamilia) {
+                try {
+                    // Obtener información del niño (nombre y salón)
+                    $ninoQuery = "SELECT CONCAT(nombre, ' ', apellido_paterno, ' ', IFNULL(apellido_materno, '')) as nombre_completo, salon_id 
+                                  FROM ninos WHERE id = :nino_id";
+                    $ninoStmt = $db->prepare($ninoQuery);
+                    $ninoStmt->bindParam(':nino_id', $ninoId, PDO::PARAM_INT);
+                    $ninoStmt->execute();
+                    $ninoInfo = $ninoStmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($ninoInfo && $ninoInfo['salon_id']) {
+                        // Obtener personal del salón (educadoras y académicos)
+                        $personalQuery = "SELECT ua.id, ua.token_app 
+                                         FROM personal p
+                                         INNER JOIN usuarios_app ua ON p.usuario_app_id = ua.id
+                                         WHERE p.salon_id = :salon_id 
+                                         AND p.activo = 1 
+                                         AND ua.activo = 1
+                                         AND ua.token_app IS NOT NULL
+                                         AND ua.tipo_usuario IN ('educador', 'academico', 'academico_b')";
+                        $personalStmt = $db->prepare($personalQuery);
+                        $personalStmt->bindParam(':salon_id', $ninoInfo['salon_id'], PDO::PARAM_INT);
+                        $personalStmt->execute();
+                        $personal = $personalStmt->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        if (!empty($personal)) {
+                            // Preparar notificación
+                            $notificationTitle = "Comentario de familia";
+                            $notificationBody = "La familia ha comentado la bitácora de " . $ninoInfo['nombre_completo'] . " del día de hoy";
+                            
+                            // Enviar notificación a cada miembro del personal
+                            $firebase = new FirebaseAPIv1();
+                            foreach ($personal as $miembro) {
+                                try {
+                                    $firebase->sendNotification(
+                                        $miembro['token_app'],
+                                        $notificationTitle,
+                                        $notificationBody,
+                                        [
+                                            'type' => 'comentario_familia',
+                                            'nino_id' => (string)$ninoId,
+                                            'bitacora_id' => (string)$bitacoraId,
+                                            'nino_nombre' => $ninoInfo['nombre_completo']
+                                        ]
+                                    );
+                                    error_log('[bitacora_comportamiento.php] Notificación enviada al personal ID: ' . $miembro['id']);
+                                } catch (Exception $notifError) {
+                                    error_log('[bitacora_comportamiento.php] Error enviando notificación: ' . $notifError->getMessage());
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception $notifException) {
+                    error_log('[bitacora_comportamiento.php] Error en proceso de notificación: ' . $notifException->getMessage());
+                    // No fallar la operación si la notificación falla
+                }
+            }
+            
             echo json_encode([
                 'success' => true,
                 'message' => 'Bitácora actualizada exitosamente',
@@ -507,6 +567,65 @@ try {
 
         if ($insertStmt->execute()) {
             $bitacoraId = $db->lastInsertId();
+            
+            // Si se agregaron comentarios de familia al crear, notificar al personal del salón
+            if ($comentariosFamilia) {
+                try {
+                    // Obtener información del niño (nombre y salón)
+                    $ninoQuery = "SELECT CONCAT(nombre, ' ', apellido_paterno, ' ', IFNULL(apellido_materno, '')) as nombre_completo, salon_id 
+                                  FROM ninos WHERE id = :nino_id";
+                    $ninoStmt = $db->prepare($ninoQuery);
+                    $ninoStmt->bindParam(':nino_id', $ninoId, PDO::PARAM_INT);
+                    $ninoStmt->execute();
+                    $ninoInfo = $ninoStmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($ninoInfo && $ninoInfo['salon_id']) {
+                        // Obtener personal del salón (educadoras y académicos)
+                        $personalQuery = "SELECT ua.id, ua.token_app 
+                                         FROM personal p
+                                         INNER JOIN usuarios_app ua ON p.usuario_app_id = ua.id
+                                         WHERE p.salon_id = :salon_id 
+                                         AND p.activo = 1 
+                                         AND ua.activo = 1
+                                         AND ua.token_app IS NOT NULL
+                                         AND ua.tipo_usuario IN ('educador', 'academico', 'academico_b')";
+                        $personalStmt = $db->prepare($personalQuery);
+                        $personalStmt->bindParam(':salon_id', $ninoInfo['salon_id'], PDO::PARAM_INT);
+                        $personalStmt->execute();
+                        $personal = $personalStmt->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        if (!empty($personal)) {
+                            // Preparar notificación
+                            $notificationTitle = "Comentario de familia";
+                            $notificationBody = "La familia ha comentado la bitácora de " . $ninoInfo['nombre_completo'] . " del día de hoy";
+                            
+                            // Enviar notificación a cada miembro del personal
+                            $firebase = new FirebaseAPIv1();
+                            foreach ($personal as $miembro) {
+                                try {
+                                    $firebase->sendNotification(
+                                        $miembro['token_app'],
+                                        $notificationTitle,
+                                        $notificationBody,
+                                        [
+                                            'type' => 'comentario_familia',
+                                            'nino_id' => (string)$ninoId,
+                                            'bitacora_id' => (string)$bitacoraId,
+                                            'nino_nombre' => $ninoInfo['nombre_completo']
+                                        ]
+                                    );
+                                    error_log('[bitacora_comportamiento.php] Notificación enviada al personal ID: ' . $miembro['id']);
+                                } catch (Exception $notifError) {
+                                    error_log('[bitacora_comportamiento.php] Error enviando notificación: ' . $notifError->getMessage());
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception $notifException) {
+                    error_log('[bitacora_comportamiento.php] Error en proceso de notificación: ' . $notifException->getMessage());
+                    // No fallar la operación si la notificación falla
+                }
+            }
             
             echo json_encode([
                 'success' => true,
