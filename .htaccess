@@ -32,33 +32,7 @@ Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-R
     Satisfy Any
 </FilesMatch>
 
-# Evitar acceso directo a archivos PHP sensibles (excepto imágenes y archivos públicos)
-<Files "*.php">
-    Order Deny,Allow
-    Deny from all
-</Files>
-
-<Files "index.php">
-    Order Allow,Deny
-    Allow from all
-</Files>
-
-<Files "login.php">
-    Order Allow,Deny
-    Allow from all
-</Files>
-
-<Files "nino.php">
-    Order Allow,Deny
-    Allow from all
-</Files>
-
-<Files "verify-token.php">
-    Order Allow,Deny
-    Allow from all
-</Files>
-
-# Proteger archivos de configuración
+# Proteger solo archivos de configuración sensibles específicos
 <Files "database.php">
     Order Deny,Allow
     Deny from all

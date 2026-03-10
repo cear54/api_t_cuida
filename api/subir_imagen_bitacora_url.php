@@ -23,12 +23,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    // DEBUG: Log de inicio
-    error_log("DEBUG subir_imagen_bitacora_url: Iniciando proceso de subida");
-    error_log("DEBUG subir_imagen_bitacora_url: Método = " . $_SERVER['REQUEST_METHOD']);
-    error_log("DEBUG subir_imagen_bitacora_url: POST data = " . print_r($_POST, true));
-    error_log("DEBUG subir_imagen_bitacora_url: FILES data = " . print_r($_FILES, true));
-    
     // Verificar token JWT - múltiples métodos para obtener headers
     $headers = getallheaders();
     if (!$headers) {
@@ -40,10 +34,7 @@ try {
     
     $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     
-    error_log("DEBUG subir_imagen_bitacora_url: Auth header = " . ($authHeader ? "presente" : "ausente"));
-    
     if (!$authHeader || !preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-        error_log("DEBUG subir_imagen_bitacora_url: Error - Token de autorización no encontrado");
         throw new Exception('Token de autorización requerido');
     }
     
@@ -75,9 +66,6 @@ try {
     // Verificar también por extensión de archivo si el tipo MIME no es confiable
     $file_extension = strtolower(pathinfo($imagen['name'], PATHINFO_EXTENSION));
     $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif'];
-    
-    error_log("DEBUG subir_imagen_bitacora_url: Tipo MIME = " . $imagen['type']);
-    error_log("DEBUG subir_imagen_bitacora_url: Extensión = " . $file_extension);
     
     if (!in_array($imagen['type'], $allowed_types) && !in_array($file_extension, $allowed_extensions)) {
         throw new Exception('Tipo de archivo no permitido. Solo se permiten: JPG, PNG, GIF');
@@ -161,8 +149,6 @@ try {
     ]);
 
 } catch (Exception $e) {
-    error_log("DEBUG subir_imagen_bitacora_url: Exception capturada = " . $e->getMessage());
-    error_log("DEBUG subir_imagen_bitacora_url: Exception stack trace = " . $e->getTraceAsString());
     http_response_code(500);
     echo json_encode([
         'success' => false,
