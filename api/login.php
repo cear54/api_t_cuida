@@ -1,12 +1,14 @@
 <?php
-header("Access-Control-Allow-Origin: *");
+// Forzar Content-Type JSON en TODAS las respuestas
 header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+header("Access-Control-Allow-Max-Age: 3600");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 
 // Manejar OPTIONS request para CORS
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(200);
     exit(0);
 }
 
@@ -20,8 +22,25 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     sendResponse(false, "Método no permitido", null, 405);
 }
 
+// Validar Content-Type de la petición
+$contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
+if (!empty($contentType) && stripos($contentType, 'application/json') === false) {
+    error_log("[LOGIN] Content-Type inválido recibido: $contentType");
+    sendResponse(false, "Content-Type debe ser application/json", null, 415);
+}
+
 // Obtener datos del POST
-$data = json_decode(file_get_contents("php://input"));
+$rawInput = file_get_contents("php://input");
+if (empty($rawInput)) {
+    sendResponse(false, "Body de la petición vacío", null, 400);
+}
+
+// Validar que sea JSON válido
+$data = json_decode($rawInput);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    error_log("[LOGIN] JSON inválido recibido: " . json_last_error_msg());
+    sendResponse(false, "JSON inválido: " . json_last_error_msg(), null, 400);
+}
 
 // Verificar que se recibieron los datos necesarios
 if (empty($data->email) || empty($data->password)) {

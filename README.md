@@ -26,6 +26,51 @@ CREATE TABLE usuarios_app (
 
 ## Endpoints
 
+### GET /api/health.php
+Verifica que el API esté funcionando correctamente. Útil para diagnóstico de problemas de conectividad.
+
+**URL:** `/api/health.php`
+
+**Método:** GET
+
+**Headers:** Ninguno (no requiere autenticación)
+
+**Respuesta exitosa (200):**
+```json
+{
+    "success": true,
+    "message": "API funcionando correctamente",
+    "status": "healthy",
+    "api_version": "1.0",
+    "timestamp": "2026-03-11 10:30:00",
+    "database_status": "connected",
+    "server_info": {
+        "php_version": "8.1.0",
+        "server_software": "Apache/2.4",
+        "server_time": "2026-03-11 10:30:00",
+        "timezone": "America/Mexico_City"
+    },
+    "endpoints_available": {
+        "login": "/api/login.php",
+        "health": "/api/health.php"
+    },
+    "request_info": {
+        "method": "GET",
+        "protocol": "HTTP/1.1",
+        "remote_addr": "192.168.1.100",
+        "user_agent": "Dart/2.18"
+    }
+}
+```
+
+**Uso:**
+- Verificar si el API es accesible desde una red
+- Diagnosticar problemas de firewall o captive portal
+- Comprobar estado de la base de datos
+- Obtener información del servidor para debugging
+
+---
+
 ### POST /api/login
 Autentica un usuario en el sistema.
 
@@ -139,12 +184,34 @@ Future<Map<String, dynamic>> login(String email, String password) async {
 
 ## Configuración para servidor remoto
 
-Para usar en un servidor remoto, descomenta y configura las variables en `config/database.php`:
+Las variables de entorno se configuran en el archivo `.env`. 
 
-```php
-// Configuración para servidor remoto
-private $host = "tu_servidor_remoto.com";
-private $db_name = "estancias";
-private $username = "usuario_remoto";
-private $password = "password_remoto";
+Para producción, el script de deploy ajusta automáticamente:
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `CORS_ORIGIN=https://estancias.cear54.com`
+
+Ver [DEPLOY.md](DEPLOY.md) para instrucciones completas de deployment.
+
+## 🚀 Deploy al Servidor
+
+### Deploy Completo
+```powershell
+.\deploy.ps1
 ```
+
+### Deploy Solo Variables (.env)
+```powershell
+.\deploy.ps1 -OnlyEnv
+```
+
+### Quick Deploy (Archivo Específico)
+```powershell
+.\quick-deploy.ps1 -Files "api/login.php"
+```
+
+**Servidor de Producción**:
+- URL: `https://estancias.cear54.com/api_t_cuida/api`
+- Health: `https://estancias.cear54.com/api_t_cuida/api/health.php`
+
+Ver [DEPLOY.md](DEPLOY.md) para más detalles y troubleshooting.

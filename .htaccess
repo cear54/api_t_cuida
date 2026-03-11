@@ -3,15 +3,15 @@
 # Habilitar rewrite engine
 RewriteEngine On
 
-# PERMITIR ACCESO DIRECTO A ARCHIVOS DE IMAGEN Y RECURSOS ESTÁTICOS
-# Esto debe ir ANTES de cualquier otra regla de rewrite
-RewriteCond %{REQUEST_FILENAME} \.(jpg|jpeg|png|gif|bmp|svg|ico|css|js|pdf)$ [NC]
+# PERMITIR ACCESO DIRECTO A ARCHIVOS EXISTENTES (PHP, imágenes, etc)
+# Si el archivo existe, ejecutarlo/servirlo directamente
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Redirigir todo el resto al index.php (excepto archivos existentes)
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+# Si el archivo NO existe, redirigir al index.php solo si la ruta empieza con /api/
+RewriteCond %{REQUEST_URI} ^/api_t_cuida/api/
+RewriteRule ^(.*)$ api/index.php [QSA,L]
 
 # Headers de seguridad
 Header always set X-Content-Type-Options nosniff
